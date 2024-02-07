@@ -59,19 +59,6 @@ const OptionId kSmartPruningFactorId{
     "promising moves from being considered even earlier. Values less than 1 "
     "causes hopeless moves to still have some attention. When set to 0, smart "
     "pruning is deactivated."};
-const OptionId kSmartPruningMinQDiffFactorId {
-	"smart-pruning-min-q-diff-factor", "SmartPruningMinQDiffFactor",
-		"..."};
-const OptionId kSmartPruningMaxQDiffId{
-    "smart-pruning-max-q-diff", "SmartPruningMaxQDiff", "..."};
-
-
-
-
-
-
-}
-
 const OptionId kMinimumSmartPruningBatchesId{
     "smart-pruning-minimum-batches", "SmartPruningMinimumBatches",
     "Only allow smart pruning to stop search after at least this many batches "
@@ -88,10 +75,6 @@ void PopulateCommonStopperOptions(RunType for_what, OptionsParser* options) {
   options->Add<FloatOption>(kMinimumKLDGainPerNodeId, 0.0f, 1.0f) = 0.0f;
   options->Add<FloatOption>(kSmartPruningFactorId, 0.0f, 10.0f) =
       (for_what == RunType::kUci ? 1.33f : 0.00f);
-  options->Add<FloatOption>(kSmartPruningMaxQDiffId, 0.0f, 2.0f) =
-      (for_what == RunType::kUci ? 0.3f : 0.3f);
-  options->Add<FloatOption>(kSmartPruningMinQDiffFactorId, 0.0f, 1.0f) =
-      (for_what == RunType::kUci ? 1.00f : 1.00f);
   options->Add<IntOption>(kMinimumSmartPruningBatchesId, 0, 10000) = 0;
   options->Add<BoolOption>(kNodesAsPlayoutsId) = false;
 
@@ -104,10 +87,6 @@ void PopulateCommonStopperOptions(RunType for_what, OptionsParser* options) {
   if (for_what == RunType::kSimpleUci) {
     options->HideOption(kSmartPruningFactorId);
     options->HideOption(kMinimumSmartPruningBatchesId);
-    options->HideOption(kSmartPruningMinQDiffFactorId);
-    options->HideOption(kSmartPruningMaxQDiffId);
-
-
   }
 }
 
@@ -123,12 +102,9 @@ void PopulateIntrinsicStoppers(ChainedSearchStopper* stopper,
 
   // Should be last in the chain.
   const auto smart_pruning_factor = options.Get<float>(kSmartPruningFactorId);
-  const double smart_pruning_max_q_diff_ = options.Get<float>(kSmartPruningMinQDiffFactorId);
-  const double smart_pruning_min_q_diff_factor_ = options.Get<float>(kMinimumSmartPruningBatchesId);
   if (smart_pruning_factor > 0.0f) {
     stopper->AddStopper(std::make_unique<SmartPruningStopper>(
-        smart_pruning_factor, options.Get<int>(kMinimumSmartPruningBatchesId),
-        smart_pruning_max_q_diff_, smart_pruning_min_q_diff_factor_));
+        smart_pruning_factor, options.Get<int>(kMinimumSmartPruningBatchesId)));
   }
 }
 
