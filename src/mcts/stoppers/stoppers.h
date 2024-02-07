@@ -147,6 +147,8 @@ class SmartPruningStopper : public SearchStopper {
 
  private:
   const double smart_pruning_factor_;
+  const double smart_pruning_max_q_diff_;
+  const double smart_pruning_min_q_diff_factor_;
   const int64_t minimum_batches_;
   Mutex mutex_;
   std::optional<int64_t> first_eval_time_ GUARDED_BY(mutex_);

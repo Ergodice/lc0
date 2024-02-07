@@ -25,7 +25,7 @@
   Program grant you additional permission to convey the resulting work.
 */
 
-#include "mcts/stoppers/legacy.h"
+#include "mcts/stoppers/experimental.h"
 
 #include "mcts/stoppers/stoppers.h"
 
@@ -51,9 +51,9 @@ float ComputeEstimatedMovesToGo(int ply, float midpoint, float steepness) {
 
 namespace {
 
-class LegacyStopper : public TimeLimitStopper {
+class ExperimentalStopper : public TimeLimitStopper {
  public:
-  LegacyStopper(int64_t deadline_ms, int64_t* time_piggy_bank)
+  ExperimentalStopper(int64_t deadline_ms, int64_t* time_piggy_bank)
       : TimeLimitStopper(deadline_ms), time_piggy_bank_(time_piggy_bank) {}
   virtual void OnSearchDone(const IterationStats& stats) override {
     *time_piggy_bank_ += GetTimeLimitMs() - stats.time_since_movestart;
@@ -63,9 +63,9 @@ class LegacyStopper : public TimeLimitStopper {
   int64_t* const time_piggy_bank_;
 };
 
-class LegacyTimeManager : public TimeManager {
+class ExperimentalTimeManager : public TimeManager {
  public:
-  LegacyTimeManager(int64_t move_overhead, const OptionsDict& params)
+  ExperimentalTimeManager(int64_t move_overhead, const OptionsDict& params)
       : move_overhead_(move_overhead),
         slowmover_(params.GetOrDefault<float>("slowmover", 1.0f)),
         time_curve_midpoint_(
@@ -91,7 +91,7 @@ class LegacyTimeManager : public TimeManager {
   int64_t time_spared_ms_ = 0;
 };
 
-std::unique_ptr<SearchStopper> LegacyTimeManager::GetStopper(
+std::unique_ptr<SearchStopper> ExperimentalTimeManager::GetStopper(
     const GoParams& params, const NodeTree& tree) {
   const Position& position = tree.HeadPosition();
   const bool is_black = position.IsBlackToMove();
@@ -160,13 +160,14 @@ std::unique_ptr<SearchStopper> LegacyTimeManager::GetStopper(
   // Make sure we don't exceed current time limit with what we calculated.
   auto deadline =
       std::min(static_cast<int64_t>(this_move_time), *time - move_overhead_);
-  return std::make_unique<LegacyStopper>(deadline, &time_spared_ms_);
+  return std::make_unique<ExperimentalStopper>(deadline, &time_spared_ms_);
 }
 
 }  // namespace
 
-std::unique_ptr<TimeManager> MakeLegacyTimeManager(int64_t move_overhead,
+std::unique_ptr<TimeManager> MakeExperimentalTimeManager(
+    int64_t move_overhead,
                                                    const OptionsDict& params) {
-  return std::make_unique<LegacyTimeManager>(move_overhead, params);
+  return std::make_unique<ExperimentalTimeManager>(move_overhead, params);
 }
 }  // namespace lczero
