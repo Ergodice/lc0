@@ -54,7 +54,7 @@ class ChainedSearchStopper : public SearchStopper {
 class VisitsStopper : public SearchStopper {
  public:
   VisitsStopper(int64_t limit, bool populate_remaining_playouts)
-    : nodes_limit_(limit ? limit : 4000000000ll),
+      : nodes_limit_(limit ? limit : 4000000000ll),
         populate_remaining_playouts_(populate_remaining_playouts) {}
   int64_t GetVisitsLimit() const { return nodes_limit_; }
   bool ShouldStop(const IterationStats&, StoppersHints*) override;
@@ -142,11 +142,15 @@ class KldGainStopper : public SearchStopper {
 // best move to potentially become the best one, stop the search.
 class SmartPruningStopper : public SearchStopper {
  public:
-  SmartPruningStopper(float smart_pruning_factor, int64_t minimum_batches);
+  SmartPruningStopper(float smart_pruning_factor, int64_t minimum_batches,
+                      float smart_pruning_max_q_diff,
+                      float smart_pruning_min_q_diff_factor);
   bool ShouldStop(const IterationStats&, StoppersHints*) override;
 
  private:
   const double smart_pruning_factor_;
+  const double smart_pruning_max_q_diff_;
+  const double smart_pruning_min_q_diff_factor_;
   const int64_t minimum_batches_;
   Mutex mutex_;
   std::optional<int64_t> first_eval_time_ GUARDED_BY(mutex_);

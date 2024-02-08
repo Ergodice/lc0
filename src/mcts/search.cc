@@ -443,9 +443,7 @@ float Search::GetDrawScore(bool is_odd_depth) const {
               : -params_.GetDrawScore());
 }
 
-
 namespace {
-
 
 inline float ComputeUncertaintyFactor(const SearchParams& params, float e) {
   float min_factor = params.GetCpuctUncertaintyMinFactor();
@@ -453,7 +451,8 @@ inline float ComputeUncertaintyFactor(const SearchParams& params, float e) {
   float min_uncertainty = params.GetCpuctUncertaintyMinUncertainty();
   float max_uncertainty = params.GetCpuctUncertaintyMaxUncertainty();
   e = std::clamp(e * e, min_uncertainty, max_uncertainty);
-  float factor = min_factor + (max_factor - min_factor) * (e - min_uncertainty) /
+  float factor = min_factor + (max_factor - min_factor) *
+                                  (e - min_uncertainty) /
                                   (max_uncertainty - min_uncertainty + 1e-5);
   return factor;
 }
@@ -493,16 +492,15 @@ inline float ComputeStdevFactor(const SearchParams& params, float q,
 }
 
 inline float ComputeDesperationFactor(const SearchParams& params, float q,
-  float weight) {
-
+                                      float weight) {
   const float prior_weight = params.GetDesperationPriorWeight();
-  const float low = params.GetDesperationLow(); const float high = params.GetDesperationHigh();
+  const float low = params.GetDesperationLow();
+  const float high = params.GetDesperationHigh();
 
   q = abs(q);
-  float factor = (q <= low || q >= high) ? params.GetDesperationMultiplier() : 1.0f;
+  float factor =
+      (q <= low || q >= high) ? params.GetDesperationMultiplier() : 1.0f;
   return 1.0f + (factor - 1.0f) * weight / (prior_weight + weight);
-
-
 }
 
 inline float ComputeStdevFactor(const SearchParams& params, Node* node) {
@@ -517,24 +515,25 @@ inline float ComputeCpuctFactor(const SearchParams& params, float weight,
                                  : 1.0f;
 
   const float uncertainty_factor = params.GetUseCpuctUncertainty()
-                                      ? ComputeUncertaintyFactor(params, e) : 1.0f;
+                                       ? ComputeUncertaintyFactor(params, e)
+                                       : 1.0f;
 
   const float desperation_factor =
-      params.GetUseDesperation() ?
-          ComputeDesperationFactor(params, q, weight) : 1.0f;
+      params.GetUseDesperation() ? ComputeDesperationFactor(params, q, weight)
+                                 : 1.0f;
 
   return uncertainty_factor * stdev_factor * desperation_factor;
 }
 
-
 inline float GetFpu(const SearchParams& params, Node* node, bool is_root_node,
                     float draw_score) {
   const auto value = params.GetFpuValue(is_root_node);
-	// we shouldn't push the value below -1
+  // we shouldn't push the value below -1
   return params.GetFpuAbsolute(is_root_node)
              ? value
              : fmax(-node->GetQ(-draw_score) -
-                        value * std::sqrt(node->GetVisitedPolicy()), -1.0f);
+                        value * std::sqrt(node->GetVisitedPolicy()),
+                    -1.0f);
 }
 
 // Faster version for if visited_policy is readily available already.
@@ -543,11 +542,12 @@ inline float GetFpu(const SearchParams& params, Node* node, bool is_root_node,
   const auto value = params.GetFpuValue(is_root_node);
   return params.GetFpuAbsolute(is_root_node)
              ? value
-             : fmax(-node->GetQ(-draw_score) -
-                        value * std::sqrt(visited_pol), -1.0f);
+             : fmax(-node->GetQ(-draw_score) - value * std::sqrt(visited_pol),
+                    -1.0f);
 }
 
-inline float ComputeExploreFactor(const SearchParams& params, float weight, bool is_root_node) {
+inline float ComputeExploreFactor(const SearchParams& params, float weight,
+                                  bool is_root_node) {
   const float init = params.GetCpuct(is_root_node);
   const float k = params.GetCpuctFactor(is_root_node);
   const float base = params.GetCpuctBase(is_root_node);
@@ -556,17 +556,16 @@ inline float ComputeExploreFactor(const SearchParams& params, float weight, bool
          std::pow(fmax(weight, 1e-5), params.GetCpuctExponent(is_root_node));
 }
 
-inline float ComputeExploreFactor(const SearchParams& params, float weight, float q,
-                          float vs, float e, bool is_root_node) {
-	
+inline float ComputeExploreFactor(const SearchParams& params, float weight,
+                                  float q, float vs, float e,
+                                  bool is_root_node) {
   const float base_factor = ComputeExploreFactor(params, weight, is_root_node);
 
-  const float extra_factor = ComputeCpuctFactor(params, weight, q, vs, e,
-																					  is_root_node);
+  const float extra_factor =
+      ComputeCpuctFactor(params, weight, q, vs, e, is_root_node);
 
-  return base_factor * extra_factor ;
+  return base_factor * extra_factor;
 }
-
 
 inline float ComputeWeight(const SearchParams& params, float uncertainty) {
   if (!params.GetUseUncertaintyWeighting()) return 1.0f;
@@ -584,7 +583,8 @@ std::vector<std::string> Search::GetVerboseStats(Node* node) const {
   const bool is_black_to_move = (played_history_.IsBlackToMove() == is_root);
   const float draw_score = GetDrawScore(is_odd_depth);
   const float fpu = GetFpu(params_, node, is_root, draw_score);
-  const float U_coeff = ComputeExploreFactor(params_, node->GetWeight(), node->GetWL(),
+  const float U_coeff =
+      ComputeExploreFactor(params_, node->GetWeight(), node->GetWL(),
                            node->GetVS(), node->GetE(), is_root);
   std::vector<EdgeAndNode> edges;
   for (const auto& edge : node->Edges()) edges.push_back(edge);
@@ -623,9 +623,8 @@ std::vector<std::string> Search::GetVerboseStats(Node* node) const {
       print(oss, "(STDF: ",
             ComputeStdevFactor(params_, n->GetWL(), n->GetWeight(), n->GetVS()),
             ") ", 6, 5);
-      print(oss, "(UNCF: ",
-            ComputeUncertaintyFactor(params_, n->GetE()),
-            ") ", 6, 5);
+      print(oss, "(UNCF: ", ComputeUncertaintyFactor(params_, n->GetE()), ") ",
+            6, 5);
       print(oss, "(VS: ", n->GetVS(), ") ", 6, 5);
       print(oss, "(E: ", n->GetE(), ") ", 6, 5);
     } else {
@@ -659,16 +658,12 @@ std::vector<std::string> Search::GetVerboseStats(Node* node) const {
         up = -up;
         std::swap(lo, up);
       }
-      *oss << (lo == up
-                   ? "(T) "
-                   : lo == GameResult::DRAW && up == GameResult::WHITE_WON
-                         ? "(W) "
-                         : lo == GameResult::BLACK_WON && up == GameResult::DRAW
-                               ? "(L) "
-                               : "");
+      *oss << (lo == up                                                ? "(T) "
+               : lo == GameResult::DRAW && up == GameResult::WHITE_WON ? "(W) "
+               : lo == GameResult::BLACK_WON && up == GameResult::DRAW ? "(L) "
+                                                                       : "");
     }
   };
-
 
   std::vector<std::string> infos;
   const auto m_evaluator = network_->GetCapabilities().has_mlh()
@@ -697,13 +692,12 @@ std::vector<std::string> Search::GetVerboseStats(Node* node) const {
   print_stats(&oss, node);
   print_tail(&oss, node);
 
-  oss << std::endl << "Low nodes: " << total_low_nodes_
-       << " NN queries: " << total_nn_queries_
-       << " Playouts: " << total_playouts_ + initial_visits_ << std::endl;
+  oss << std::endl
+      << "Low nodes: " << total_low_nodes_
+      << " NN queries: " << total_nn_queries_
+      << " Playouts: " << total_playouts_ + initial_visits_ << std::endl;
 
-	print(&oss, "(U coeff: ", U_coeff, ") ", 15, 2);
-
-
+  print(&oss, "(U coeff: ", U_coeff, ") ", 15, 2);
 
   infos.emplace_back(oss.str());
   return infos;
@@ -1071,6 +1065,7 @@ void Search::PopulateCommonIterationStats(IterationStats* stats) {
   stats->batches_since_movestart = total_batches_;
   stats->average_depth = cum_depth_ / (total_playouts_ ? total_playouts_ : 1);
   stats->edge_n.clear();
+  stats->edge_q.clear();
   stats->win_found = false;
   stats->may_resign = true;
   stats->num_losing_edges = 0;
@@ -1094,6 +1089,7 @@ void Search::PopulateCommonIterationStats(IterationStats* stats) {
       const auto m = m_evaluator.GetMUtility(edge, q);
       const auto q_plus_m = q + m;
       stats->edge_n.push_back(n);
+      stats->edge_q.push_back(q);
       if (n > 0 && edge.IsTerminal() && edge.GetWL(0.0f) > 0.0f) {
         stats->win_found = true;
       }
@@ -1455,9 +1451,8 @@ void SearchWorker::GatherMinibatch() {
     // massive nps drop.
     if (thread_count > 1 && minibatch_size > 0 &&
         computation_->GetCacheMisses() > params_.GetIdlingMinimumWork() &&
-        thread_count -
-                search_->backend_waiting_counter_.load(
-                    std::memory_order_relaxed) >
+        thread_count - search_->backend_waiting_counter_.load(
+                           std::memory_order_relaxed) >
             params_.GetThreadIdlingThreshold()) {
       return;
     }
@@ -1752,8 +1747,6 @@ void SearchWorker::PickNodesToExtendTask(
   std::array<float, 256> current_score;
   std::array<float, 256> current_weightstarted;
 
-
-  
   constexpr int num_top = 8;
   std::array<float, num_top> top_utils;
 
@@ -1847,9 +1840,8 @@ void SearchWorker::PickNodesToExtendTask(
       }
       for (int i = 0; i < num_top; i++) {
         top_utils[i] = -999;
-      } 
+      }
 
-			
       // Root depth is 1 here, while for GetDrawScore() it's 0-based, that's why
       // the weirdness.
       const float draw_score =
@@ -1863,7 +1855,6 @@ void SearchWorker::PickNodesToExtendTask(
         current_util[index] = q + m_evaluator.GetMUtility(child, q);
       }
 
-
       for (Node* child : node->VisitedNodes()) {
         int index = child->Index();
         float q = child->GetWL();
@@ -1871,10 +1862,10 @@ void SearchWorker::PickNodesToExtendTask(
         current_util[index] = util;
         visited[index] = true;
 
-				// we're only counting visited nodes toward top utils
-				// since we only boost visited nodes
+        // we're only counting visited nodes toward top utils
+        // since we only boost visited nodes
 
-				for (int i = 0; i < num_top; i++) {
+        for (int i = 0; i < num_top; i++) {
           if (util > top_utils[i]) {
             for (int j = num_top - 1; j > i; j--) {
               top_utils[j] = top_utils[j - 1];
@@ -1884,24 +1875,22 @@ void SearchWorker::PickNodesToExtendTask(
           }
         }
       }
-      
-			const int num_boost_t1 = params_.GetTopPolicyNumBoost();
+
+      const int num_boost_t1 = params_.GetTopPolicyNumBoost();
       const int num_boost_t2 = params_.GetTopPolicyTierTwoNumBoost();
 
       const float min_policy_boost_util_t1 =
           (num_boost_t1 == 0 || !params_.GetUsePolicyBoosting())
               ? 999
               : top_utils[num_boost_t1 - 1];
-		  
-			const float min_policy_boost_util_t2 =
-					(num_boost_t2 == 0 || !params_.GetUsePolicyBoosting())
-							? 999
-							: top_utils[num_boost_t2 - 1];
 
+      const float min_policy_boost_util_t2 =
+          (num_boost_t2 == 0 || !params_.GetUsePolicyBoosting())
+              ? 999
+              : top_utils[num_boost_t2 - 1];
 
       const float policy_boost_t1 = params_.GetTopPolicyBoost();
       const float policy_boost_t2 = params_.GetTopPolicyTierTwoBoost();
-
 
       const float fpu =
           GetFpu(params_, node, is_root_node, draw_score, visited_pol);
@@ -1911,8 +1900,7 @@ void SearchWorker::PickNodesToExtendTask(
         }
       }
 
-
-			const float puct_mult =
+      const float puct_mult =
           ComputeExploreFactor(params_, node->GetWeight(), node->GetWL(),
                                node->GetVS(), node->GetE(), is_root_node);
       int cache_filled_idx = -1;
@@ -1940,7 +1928,7 @@ void SearchWorker::PickNodesToExtendTask(
             float p = cur_iters[idx].GetP();
 
             // only boost visited nodes
-						if (visited[idx]) {
+            if (visited[idx]) {
               if (util >= min_policy_boost_util_t1) {
                 p = std::max(p, policy_boost_t1);
               }
@@ -1949,9 +1937,7 @@ void SearchWorker::PickNodesToExtendTask(
               }
             }
 
-            
-            current_score[idx] =
-              p * puct_mult / (1 + weightstarted) + util;
+            current_score[idx] = p * puct_mult / (1 + weightstarted) + util;
             cache_filled_idx++;
           }
           if (is_root_node) {
@@ -2373,8 +2359,7 @@ bool SearchWorker::MaybeAdjustForTerminalOrTransposition(
   }
 
   // Use information from transposition or a new terminal.
-  if (nl->IsTransposition() ||
-      nl->IsTerminal()) {
+  if (nl->IsTransposition() || nl->IsTerminal()) {
     // Adapt information from low node to node by flipping Q sign, bounds,
     // result and incrementing m.
     v = -nl->GetWL();
@@ -2450,13 +2435,12 @@ void SearchWorker::DoBackupUpdateSingleNode(
   if (nl) {
     avg_weight = ComputeWeight(params_, nl->GetE());
     n->SetE(nl->GetE());
-		
+
   } else {
-		// game is over so uncertainty is highest possible
+    // game is over so uncertainty is highest possible
     if (params_.GetUseUncertaintyWeighting()) {
       avg_weight = params_.GetUncertaintyWeightingCap();
-    }
-    else {
+    } else {
       avg_weight = 1.0f;
     }
     n->SetE(-1.0f);
@@ -2465,12 +2449,11 @@ void SearchWorker::DoBackupUpdateSingleNode(
   if (!node_to_process.ShouldAddToInput()) {
     avg_weight *= params_.GetEasyEvalWeightDecay();
   }
-	
+
   if (nl && nl->GetN() == 0) {
-    nl->FinalizeScoreUpdate(
-        nl->GetWL(), nl->GetD(), nl->GetM(), nl->GetVS(),
-        node_to_process.multivisit,
-        node_to_process.multivisit * avg_weight);
+    nl->FinalizeScoreUpdate(nl->GetWL(), nl->GetD(), nl->GetM(), nl->GetVS(),
+                            node_to_process.multivisit,
+                            node_to_process.multivisit * avg_weight);
   }
 
   if (nr >= 2) {
@@ -2493,9 +2476,8 @@ void SearchWorker::DoBackupUpdateSingleNode(
   // Backup V value up to a root. After 1 visit, V = Q.
   for (auto it = path.crbegin(); it != path.crend();
        /* ++it in the body */) {
-    n->FinalizeScoreUpdate(
-        v, d, m, vs, node_to_process.multivisit,
-        node_to_process.multivisit * avg_weight);
+    n->FinalizeScoreUpdate(v, d, m, vs, node_to_process.multivisit,
+                           node_to_process.multivisit * avg_weight);
     if (n_to_fix > 0 && !n->IsTerminal()) {
       // First part of the path might be never as it was removed and recreated.
       n_to_fix = std::min(n_to_fix, n->GetN());
@@ -2536,9 +2518,8 @@ void SearchWorker::DoBackupUpdateSingleNode(
       n_to_fix = 0;
       weight_to_fix = 0.0f;
     }
-    pl->FinalizeScoreUpdate(
-        v, d, m, vs, node_to_process.multivisit,
-        node_to_process.multivisit * avg_weight);
+    pl->FinalizeScoreUpdate(v, d, m, vs, node_to_process.multivisit,
+                            node_to_process.multivisit * avg_weight);
     if (n_to_fix > 0) {
       pl->AdjustForTerminal(v_delta, d_delta, m_delta, vs_delta, n_to_fix,
                             weight_to_fix);

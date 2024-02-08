@@ -210,9 +210,15 @@ const int kSmartPruningToleranceNodes = 300;
 }  // namespace
 
 SmartPruningStopper::SmartPruningStopper(float smart_pruning_factor,
-                                         int64_t minimum_batches)
+                                         int64_t minimum_batches,
+                                         float smart_pruning_max_q_diff,
+                                         float smart_pruning_min_q_diff_factor)
     : smart_pruning_factor_(smart_pruning_factor),
-      minimum_batches_(minimum_batches) {}
+      minimum_batches_(minimum_batches),
+      smart_pruning_max_q_diff_(smart_pruning_max_q_diff),
+      smart_pruning_min_q_diff_factor_(smart_pruning_min_q_diff_factor)
+
+{}
 
 bool SmartPruningStopper::ShouldStop(const IterationStats& stats,
                                      StoppersHints* hints) {
@@ -242,22 +248,6 @@ bool SmartPruningStopper::ShouldStop(const IterationStats& stats,
     return false;
   }
 
-  const auto nodes = stats.nodes_since_movestart + kSmartPruningToleranceNodes;
-  const auto time = stats.time_since_movestart - *first_eval_time_;
-  // If nps is populated by someone who knows better, use it. Otherwise use the
-  // value calculated here.
-  const auto nps = hints->GetEstimatedNps().value_or(1000LL * nodes / time + 1);
-
-  const double remaining_time_s = hints->GetEstimatedRemainingTimeMs() / 1000.0;
-  const auto remaining_playouts =
-      std::min(remaining_time_s * nps / smart_pruning_factor_,
-               hints->GetEstimatedRemainingPlayouts() / smart_pruning_factor_);
-
-  // May overflow if (nps/smart_pruning_factor) > 180 000 000, but that's not
-  // very realistic.
-  hints->UpdateEstimatedRemainingPlayouts(remaining_playouts);
-  if (stats.batches_since_movestart < minimum_batches_) return false;
-
   uint32_t largest_n = 0;
   uint32_t second_largest_n = 0;
   for (auto n : stats.edge_n) {
@@ -268,6 +258,42 @@ bool SmartPruningStopper::ShouldStop(const IterationStats& stats,
       second_largest_n = n;
     }
   }
+
+  float largest_q = 0.0f;
+  float second_largest_q = 0.0f;
+
+  for (auto q : stats.edge_q) {
+    if (q > largest_q) {
+      second_largest_q = largest_q;
+      largest_q = q;
+    } else if (q > second_largest_q) {
+      second_largest_q = q;
+    }
+  }
+
+  const float q_diff = largest_q - second_largest_q;
+
+  const float q_diff_factor =
+      1 + (smart_pruning_min_q_diff_factor_ - 1) *
+              fmin(q_diff / smart_pruning_max_q_diff_, 1);
+
+  float smart_pruning_factor = q_diff_factor / smart_pruning_factor_;
+
+  const auto nodes = stats.nodes_since_movestart + kSmartPruningToleranceNodes;
+  const auto time = stats.time_since_movestart - *first_eval_time_;
+  // If nps is populated by someone who knows better, use it. Otherwise use the
+  // value calculated here.
+  const auto nps = hints->GetEstimatedNps().value_or(1000LL * nodes / time + 1);
+
+  const double remaining_time_s = hints->GetEstimatedRemainingTimeMs() / 1000.0;
+  const auto remaining_playouts =
+      fmin(remaining_time_s * nps * smart_pruning_factor,
+               hints->GetEstimatedRemainingPlayouts() * smart_pruning_factor);
+
+  // May overflow if (nps/smart_pruning_factor) > 180 000 000, but that's not
+  // very realistic.
+  hints->UpdateEstimatedRemainingPlayouts(remaining_playouts);
+  if (stats.batches_since_movestart < minimum_batches_) return false;
 
   if (remaining_playouts < (largest_n - second_largest_n)) {
     LOGFILE << std::fixed << remaining_playouts

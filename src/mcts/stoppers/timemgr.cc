@@ -25,43 +25,89 @@
   Program grant you additional permission to convey the resulting work.
 */
 
-#include "mcts/stoppers/timemgr.h"
+#pragma once
 
-#include "mcts/stoppers/stoppers.h"
+#include <chrono>
+#include <memory>
+#include <optional>
+#include <vector>
+
+#include "chess/uciloop.h"
+#include "mcts/node.h"
+#include "utils/optionsdict.h"
 
 namespace lczero {
 
-StoppersHints::StoppersHints() { Reset(); }
+// Various statistics that search sends to stoppers for their stopping decision.
+// It is expected that this structure will grow.
+struct IterationStats {
+  int64_t time_since_movestart = 0;
+  int64_t time_since_first_batch = 0;
+  int64_t total_visits = 0;
+  int64_t total_allocated_nodes = 0;
+  int64_t nodes_since_movestart = 0;
+  int64_t batches_since_movestart = 0;
+  int average_depth = 0;
+  int mate_depth = std::numeric_limits<int>::max();
+  std::vector<uint32_t> edge_n;
+  std::vector<float> edge_q;
 
-void StoppersHints::UpdateEstimatedRemainingTimeMs(int64_t v) {
-  if (v < remaining_time_ms_) remaining_time_ms_ = v;
-}
-int64_t StoppersHints::GetEstimatedRemainingTimeMs() const {
-  return remaining_time_ms_;
-}
+  // TODO: remove this in favor of time_usage_hint_=kImmediateMove when
+  // smooth time manager is the default.
+  bool win_found = false;
+  bool may_resign = false;
+  int num_losing_edges = 0;
 
-void StoppersHints::UpdateEstimatedRemainingPlayouts(int64_t v) {
-  if (v < remaining_playouts_) remaining_playouts_ = v;
-}
-int64_t StoppersHints::GetEstimatedRemainingPlayouts() const {
-  // Even if we exceeded limits, don't go crazy by not allowing any playouts.
-  return std::max(decltype(remaining_playouts_){1}, remaining_playouts_);
-}
+  enum class TimeUsageHint { kNormal, kNeedMoreTime, kImmediateMove };
+  TimeUsageHint time_usage_hint_ = TimeUsageHint::kNormal;
+};
 
-void StoppersHints::UpdateEstimatedNps(float v) { estimated_nps_ = v; }
+// Hints from stoppers back to the search engine. Currently include:
+// 1. EstimatedRemainingTime -- for search watchdog thread to know when to
+// expect running out of time.
+// 2. EstimatedPlayouts -- for smart pruning at root (not pick root nodes that
+// cannot potentially become good).
+class StoppersHints {
+ public:
+  StoppersHints();
+  void Reset();
+  void UpdateEstimatedRemainingTimeMs(int64_t v);
+  int64_t GetEstimatedRemainingTimeMs() const;
+  void UpdateEstimatedRemainingPlayouts(int64_t v);
+  int64_t GetEstimatedRemainingPlayouts() const;
+  void UpdateEstimatedNps(float v);
+  std::optional<float> GetEstimatedNps() const;
 
-std::optional<float> StoppersHints::GetEstimatedNps() const {
-  return estimated_nps_;
-}
+ private:
+  int64_t remaining_time_ms_;
+  int64_t remaining_playouts_;
+  std::optional<float> estimated_nps_;
+};
 
-void StoppersHints::Reset() {
-  // Slightly more than 3 years.
-  remaining_time_ms_ = 100000000000;
-  // Type for N in nodes is currently uint32_t, so set limit in order not to
-  // overflow it.
-  remaining_playouts_ = 4000000000;
-  // NPS is not known.
-  estimated_nps_.reset();
-}
+// Interface for search stopper.
+// Note that:
+// 1. Stoppers are shared between all search threads, so if stopper has mutable
+// varibles, it has to think about concurrency (mutex/atomics)
+// (maybe in future it will be changed).
+// 2. IterationStats and StoppersHints are per search thread, so access to
+// them is fine without synchronization.
+// 3. OnSearchDone is guaranteed to be called once (i.e. from only one thread).
+class SearchStopper {
+ public:
+  virtual ~SearchStopper() = default;
+  // Question to a stopper whether search should stop.
+  // Search statistics is sent via IterationStats, the stopper can optionally
+  // send hints to the search through StoppersHints.
+  virtual bool ShouldStop(const IterationStats&, StoppersHints*) = 0;
+  // Is called when search is done.
+  virtual void OnSearchDone(const IterationStats&) {}
+};
+
+class TimeManager {
+ public:
+  virtual ~TimeManager() = default;
+  virtual std::unique_ptr<SearchStopper> GetStopper(const GoParams& params,
+                                                    const NodeTree& tree) = 0;
+};
 
 }  // namespace lczero
