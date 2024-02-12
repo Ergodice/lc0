@@ -115,14 +115,16 @@ void PopulateIntrinsicStoppers(ChainedSearchStopper* stopper,
 
   // Should be last in the chain.
   const auto smart_pruning_factor = options.Get<float>(kSmartPruningFactorId);
-  const double smart_pruning_max_q_diff_ =
+  const int min_smart_pruning_batches =
+      options.Get<int>(kMinimumSmartPruningBatchesId);
+  const double smart_pruning_max_q_diff =
+      options.Get<float>(kSmartPruningMaxQDiffId);
+  const double smart_pruning_min_q_diff_factor =
       options.Get<float>(kSmartPruningMinQDiffFactorId);
-  const double smart_pruning_min_q_diff_factor_ =
-      options.Get<float>(kMinimumSmartPruningBatchesId);
   if (smart_pruning_factor > 0.0f) {
     stopper->AddStopper(std::make_unique<SmartPruningStopper>(
-        smart_pruning_factor, options.Get<int>(kMinimumSmartPruningBatchesId),
-        smart_pruning_max_q_diff_, smart_pruning_min_q_diff_factor_));
+        smart_pruning_factor, min_smart_pruning_batches,
+        smart_pruning_max_q_diff, smart_pruning_min_q_diff_factor));
   }
 }
 
