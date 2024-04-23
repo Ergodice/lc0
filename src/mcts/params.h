@@ -206,7 +206,8 @@ class SearchParams {
   float GetDesperationPriorWeight() const { return kDesperationPriorWeight; }
   bool GetUseDesperation() const { return kUseDesperation;  }
 
-	
+	float GetFpuBoost() const { return kFpuBoost; }
+
 
 	float GetTopPolicyBoost() const { return kTopPolicyBoost; }
 
@@ -329,6 +330,8 @@ class SearchParams {
   static const OptionId kTopPolicyTierTwoBoostId;
   static const OptionId kTopPolicyTierTwoNumBoostId;
   static const OptionId kUsePolicyBoostingId;
+	
+  static const OptionId kFpuBoostId;
 
 
   
@@ -425,6 +428,8 @@ class SearchParams {
   const float kDesperationHigh;
   const float kDesperationPriorWeight;
   const bool kUseDesperation;
+	
+  const float kFpuBoost;
 
 
 };

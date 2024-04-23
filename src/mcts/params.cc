@@ -533,6 +533,9 @@ const OptionId SearchParams::kTopPolicyTierTwoNumBoostId{
 const OptionId SearchParams::kUsePolicyBoostingId{
     "use-policy-boosting", "UsePolicyBoosting",
     "Whether to use policy boosting."};
+const OptionId SearchParams::kFpuBoostId{
+    "fpu-boost", "FpuBoost",
+    "How much to boost fpu on desperate positions. 1 is no effect"};
 
 
 
@@ -674,10 +677,9 @@ void SearchParams::Populate(OptionsParser* options) {
   options->Add<IntOption>(kTopPolicyTierTwoNumBoostId, 0, 8) = 0;
   options->Add<BoolOption>(kUsePolicyBoostingId) = false;
 
+	options->Add<FloatOption>(kFpuBoostId, 1.0f, 10.0f) = 1.0f;
+
 	
-
-
-
 
   options->Add<BoolOption>(kSearchSpinBackoffId) = false;
 
@@ -832,7 +834,8 @@ SearchParams::SearchParams(const OptionsDict& options)
       kTopPolicyTierTwoNumBoost(options.Get<int>(kTopPolicyTierTwoNumBoostId)),
 			kUsePolicyBoosting(options.Get<bool>(kUsePolicyBoostingId)),
 
-			
+			kFpuBoost(options.Get<float>(kFpuBoostId)),
+
 
 
       kEasyEvalWeightDecay(options.Get<float>(kEasyEvalWeightDecayId)),

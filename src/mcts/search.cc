@@ -1850,7 +1850,15 @@ void SearchWorker::PickNodesToExtendTask(
       } 
 
 			
-      // Root depth is 1 here, while for GetDrawScore() it's 0-based, that's why
+
+      // the root eval from my perspective
+      const float root_eval =
+          search_->root_node_->GetWL() * ((full_path.size() % 2 == 0) ? 1 : -1);
+
+
+
+
+			// Root depth is 1 here, while for GetDrawScore() it's 0-based, that's why
       // the weirdness.
       const float draw_score =
           (full_path.size() % 2 == 0) ? odd_draw_score : even_draw_score;
@@ -1860,6 +1868,7 @@ void SearchWorker::PickNodesToExtendTask(
         int index = child->Index();
         visited_pol += child->GetP();
         float q = child->GetQ(draw_score);
+				
         current_util[index] = q + m_evaluator.GetMUtility(child, q);
 				
         visited[index] = true;
@@ -1882,7 +1891,6 @@ void SearchWorker::PickNodesToExtendTask(
       
 			const int num_boost_t1 = params_.GetTopPolicyNumBoost();
       const int num_boost_t2 = params_.GetTopPolicyTierTwoNumBoost();
-
       const float min_policy_boost_util_t1 =
           (num_boost_t1 == 0 || !params_.GetUsePolicyBoosting())
               ? 999
@@ -1892,8 +1900,6 @@ void SearchWorker::PickNodesToExtendTask(
 					(num_boost_t2 == 0 || !params_.GetUsePolicyBoosting())
 							? 999
 							: top_utils[num_boost_t2 - 1];
-
-
       const float policy_boost_t1 = params_.GetTopPolicyBoost();
       const float policy_boost_t2 = params_.GetTopPolicyTierTwoBoost();
 
@@ -1905,6 +1911,14 @@ void SearchWorker::PickNodesToExtendTask(
           current_util[i] = fpu + m_evaluator.GetDefaultMUtility();
         }
       }
+
+			// If the eval at root is positive but at the current node is negative,
+      // greatly increase first play urgency
+			float fpu_boost = 1;
+      if (root_eval > 0 && -node->GetWL() < 0) {
+        fpu_boost = params_.GetFpuBoost();
+      }
+
 
 
 			const float puct_mult =
@@ -1942,6 +1956,9 @@ void SearchWorker::PickNodesToExtendTask(
               if (util >= min_policy_boost_util_t2) {
                 p = std::max(p, policy_boost_t2);
               }
+            } 
+            else {
+              p = p * fpu_boost;                                 
             }
 
             
