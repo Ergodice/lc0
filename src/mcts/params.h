@@ -219,7 +219,7 @@ class SearchParams {
 
   bool GetUsePolicyBoosting() const { return kUsePolicyBoosting; }
 
-
+  bool GetUseDisgust() const { return kUseDisgust; }
 
   bool GetSearchSpinBackoff() const { return kSearchSpinBackoff; }
 
@@ -332,6 +332,7 @@ class SearchParams {
   static const OptionId kUsePolicyBoostingId;
 	
   static const OptionId kFpuBoostId;
+  static const OptionId kUseDisgustId;
 
 
   
@@ -430,6 +431,8 @@ class SearchParams {
   const bool kUseDesperation;
 	
   const float kFpuBoost;
+
+  const bool kUseDisgust;
 
 
 };

@@ -699,7 +699,8 @@ std::vector<std::string> Search::GetVerboseStats(Node* node) const {
 
   oss << std::endl << "Low nodes: " << total_low_nodes_
        << " NN queries: " << total_nn_queries_
-       << " Playouts: " << total_playouts_ + initial_visits_ << std::endl;
+      << " Playouts: " << total_playouts_ + initial_visits_
+      << " Wasted queries: " << total_wasted_queries_ << std::endl;
 
 	print(&oss, "(U coeff: ", U_coeff, ") ", 15, 2);
 
@@ -1744,11 +1745,11 @@ void SearchWorker::PickNodesToExtendTask(
     receiver->reserve(receiver->size() + 30);
   }
 
-  // This 1 is 'filled pre-emptively'.
+  // These two are 'filled pre-emptively'.
   std::array<float, 256> current_util;
   std::array<bool, 256> visited;
 
-  // These 3 are 'filled on demand'.
+  // These three are 'filled on demand'.
   std::array<float, 256> current_score;
   std::array<float, 256> current_weightstarted;
 
@@ -1955,6 +1956,15 @@ void SearchWorker::PickNodesToExtendTask(
               }
               if (util >= min_policy_boost_util_t2) {
                 p = std::max(p, policy_boost_t2);
+              }
+
+							// if move has extremely bad eval then reduce exploration
+							if (params_.GetUseDisgust()) {
+                if (util <= -0.98) {
+                  p /= 4;
+                } else if (util <= -0.95) {
+                  p /= 2;
+                }
               }
             } 
             else {
@@ -2592,6 +2602,7 @@ void SearchWorker::DoBackupUpdateSingleNode(
     nr = pr;
     nm = pm;
   }
+	
   search_->total_playouts_ += node_to_process.multivisit;
   search_->cum_depth_ +=
       node_to_process.path.size() * node_to_process.multivisit;
@@ -2602,7 +2613,12 @@ void SearchWorker::DoBackupUpdateSingleNode(
   }
   if (node_to_process.ShouldAddToInput()) {
     search_->total_nn_queries_++;
+    if (std::abs(  nl->GetWL() ) > .95) {
+      search_->total_wasted_queries_++;
+    }
   }
+
+	
 }
 
 bool SearchWorker::MaybeSetBounds(Node* p, float m, uint32_t* n_to_fix,
