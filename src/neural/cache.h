@@ -67,7 +67,7 @@ class CachingComputation {
   // from parent's batch.
   void PopLastInputHit();
   // Do the computation.
-  void ComputeBlocking(float softmax_temp);
+  void ComputeBlocking(float softmax_temp, float lp_pruning);
   // Returns NN eval of @sample.
   std::shared_ptr<NNEval> GetNNEval(int sample) const;
 

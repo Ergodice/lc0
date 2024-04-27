@@ -46,6 +46,8 @@
 namespace lczero {
 
 namespace {
+
+
 // Maximum delay between outputting "uci info" when nothing interesting happens.
 const int kUciInfoMinimumFrequencyMs = 5000;
 
@@ -2239,9 +2241,10 @@ void SearchWorker::ExtendNode(NodeToProcess& picked_node) {
       int bs;
 
       if (my_ply <= 64) {
-        bs = 8;
-
+        bs = 32;
       } else if (my_ply <= 80) {
+        bs = 16;
+      } else if (my_ply <= 92) {
         bs = 4;
       } else {
         bs = 1;
@@ -2288,7 +2291,7 @@ void SearchWorker::CollectCollisions() {
 // 4. Run NN computation.
 // ~~~~~~~~~~~~~~~~~~~~~~
 void SearchWorker::RunNNComputation() {
-  computation_->ComputeBlocking(params_.GetPolicySoftmaxTemp());
+  computation_->ComputeBlocking(params_.GetPolicySoftmaxTemp(), 0.2f);
 }
 
 // 5. Retrieve NN computations (and terminal values) into nodes.
@@ -2613,7 +2616,7 @@ void SearchWorker::DoBackupUpdateSingleNode(
   }
   if (node_to_process.ShouldAddToInput()) {
     search_->total_nn_queries_++;
-    if (std::abs(  nl->GetWL() ) > .95) {
+    if (std::abs(  nl->GetWL() ) > .98) {
       search_->total_wasted_queries_++;
     }
   }

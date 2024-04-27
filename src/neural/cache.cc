@@ -96,7 +96,7 @@ void CachingComputation::PopLastInputHit() {
   batch_.pop_back();
 }
 
-void CachingComputation::ComputeBlocking(float softmax_temp) {
+void CachingComputation::ComputeBlocking(float softmax_temp, float lp_pruning) {
   if (parent_->GetBatchSize() == 0) return;
   parent_->ComputeBlocking();
 
@@ -124,15 +124,39 @@ void CachingComputation::ComputeBlocking(float softmax_temp) {
       max_p = std::max(max_p, p);
     }
     float total = 0.0;
+    float min_p = std::numeric_limits<float>::infinity();
+
     for (int ct = 0; ct < num_edges; ct++) {
       // Perform softmax and take into account policy softmax temperature T.
       // Note that we want to calculate (exp(p-max_p))^(1/T) = exp((p-max_p)/T).
       float p = FastExp((intermediate[ct] - max_p) / softmax_temp);
       intermediate[ct] = p;
       total += p;
+      min_p = std::min(min_p, p);
     }
+
+		float scale = total > 0.0f ? 1.0f / total : 1.0f;
+		// low policy pruning: if policies are especilaly low then further reduce policies
+    if (scale * min_p <= 0.01) {
+      total = 0.0;
+      for (int ct = 0; ct < num_edges; ct++) {
+        // Perform softmax and take into account policy softmax temperature T.
+        // Note that we want to calculate (exp(p-max_p))^(1/T) =
+        // exp((p-max_p)/T).
+        float p = intermediate[ct];
+        if (p <= 1.3 * min_p) {
+          p *= lp_pruning;
+        }
+        intermediate[ct] = p;
+        total += p;
+      }
+    }
+
+
+		
+		
     // Normalize P values to add up to 1.0.
-    const float scale = total > 0.0f ? 1.0f / total : 1.0f;
+    scale = total > 0.0f ? 1.0f / total : 1.0f;
     for (int ct = 0; ct < num_edges; ct++) {
       edges[ct].SetP(intermediate[ct] * scale);
     }
