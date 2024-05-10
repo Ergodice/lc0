@@ -243,6 +243,7 @@ class Move {
   BoardSquare to() const { return BoardSquare(data_ & kToMask); }
   BoardSquare from() const { return BoardSquare((data_ & kFromMask) >> 6); }
   Promotion promotion() const { return Promotion((data_ & kPromoMask) >> 12); }
+  bool check() const { return (data_ & kCheckMask) >> 15; }
 
   void SetTo(BoardSquare to) { data_ = (data_ & ~kToMask) | to.as_int(); }
   void SetFrom(BoardSquare from) {
@@ -250,6 +251,10 @@ class Move {
   }
   void SetPromotion(Promotion promotion) {
     data_ = (data_ & ~kPromoMask) | (static_cast<uint8_t>(promotion) << 12);
+  }
+  void SetCheck(bool check) {
+    data_ = (data_ & ~kCheckMask) | (check << 15 );
+  
   }
   // 0 .. 16384, knight promotion and no promotion is the same.
   uint16_t as_packed_int() const;
@@ -288,11 +293,13 @@ class Move {
   // bits 0..5 "to"-square
   // bits 6..11 "from"-square
   // bits 12..14 promotion value
+	// bit 15 gives check
 
   enum Masks : uint16_t {
     kToMask = 0b0000000000111111,
     kFromMask = 0b0000111111000000,
     kPromoMask = 0b0111000000000000,
+    kCheckMask = 0b1000000000000000,
   };
 };
 

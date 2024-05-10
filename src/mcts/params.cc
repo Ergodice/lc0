@@ -536,6 +536,11 @@ const OptionId SearchParams::kUsePolicyBoostingId{
 const OptionId SearchParams::kFpuBoostId{
     "fpu-boost", "FpuBoost",
     "How much to boost fpu on desperate positions. 1 is no effect"};
+const OptionId SearchParams::kCheckFpuBoostId{
+    "check-fpu-boost", "CheckFpuBoost",
+    "How much to boost fpu on checks. 1 is no effect"};
+
+
 const OptionId SearchParams::kUseDisgustId{
     "use-disgust", "UseDisgust",
     "Whether to reduce exploration on extremely bad moves."};
@@ -682,6 +687,8 @@ void SearchParams::Populate(OptionsParser* options) {
   options->Add<BoolOption>(kUsePolicyBoostingId) = false;
 
 	options->Add<FloatOption>(kFpuBoostId, 1.0f, 10.0f) = 1.0f;
+  options->Add<FloatOption>(kCheckFpuBoostId, 1.0f, 10.0f) = 1.0f;
+
 
 	options->Add<BoolOption>(kUseDisgustId) = false;
 
@@ -841,6 +848,8 @@ SearchParams::SearchParams(const OptionsDict& options)
 			kUsePolicyBoosting(options.Get<bool>(kUsePolicyBoostingId)),
 
 			kFpuBoost(options.Get<float>(kFpuBoostId)),
+      kCheckFpuBoost(options.Get<float>(kCheckFpuBoostId)),
+
 
       kUseDisgust(options.Get<bool>(kUseDisgustId)),
 

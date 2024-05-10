@@ -959,6 +959,13 @@ bool ChessBoard::IsLegalMove(Move move,
   }
 }
 
+bool ChessBoard::GivesCheck(Move move) const {
+  ChessBoard board(*this);
+  board.ApplyMove(move);
+  board.Mirror();
+  return board.IsUnderCheck();
+}
+
 MoveList ChessBoard::GenerateLegalMoves() const {
   const KingAttackInfo king_attack_info = GenerateKingAttackInfo();
   MoveList result = GeneratePseudolegalMoves();
@@ -966,7 +973,10 @@ MoveList ChessBoard::GenerateLegalMoves() const {
       std::remove_if(result.begin(), result.end(),
                      [&](Move m) { return !IsLegalMove(m, king_attack_info); }),
       result.end());
-  return result;
+  for (auto &move : result) {
+    move.SetCheck(GivesCheck(move));
+	}
+	return result;
 }
 
 void ChessBoard::SetFromFen(std::string fen, int* rule50_ply, int* moves) {

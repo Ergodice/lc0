@@ -207,6 +207,8 @@ class SearchParams {
   bool GetUseDesperation() const { return kUseDesperation;  }
 
 	float GetFpuBoost() const { return kFpuBoost; }
+  float GetCheckFpuBoost() const { return kCheckFpuBoost; }
+
 
 
 	float GetTopPolicyBoost() const { return kTopPolicyBoost; }
@@ -332,6 +334,8 @@ class SearchParams {
   static const OptionId kUsePolicyBoostingId;
 	
   static const OptionId kFpuBoostId;
+  static const OptionId kCheckFpuBoostId;
+
   static const OptionId kUseDisgustId;
 
 
@@ -431,6 +435,9 @@ class SearchParams {
   const bool kUseDesperation;
 	
   const float kFpuBoost;
+
+  const float kCheckFpuBoost;
+
 
   const bool kUseDisgust;
 
