@@ -223,6 +223,12 @@ class SearchParams {
 
   bool GetUseDisgust() const { return kUseDisgust; }
 
+  
+
+  bool GetUseLpPruning() const { return kUseLpPruning; }
+  float GetLpPruning() const { return kLpPruning; }
+  float GetLpPruningBound() const { return kLpPruningBound; }
+
   bool GetSearchSpinBackoff() const { return kSearchSpinBackoff; }
 
   // Search parameter IDs.
@@ -339,6 +345,11 @@ class SearchParams {
   static const OptionId kUseDisgustId;
 
 
+  static const OptionId kUseLpPruningId;
+  static const OptionId kLpPruningId;
+  static const OptionId kLpPruningBoundId;
+
+
   
 
 
@@ -440,6 +451,12 @@ class SearchParams {
 
 
   const bool kUseDisgust;
+
+
+  const bool kUseLpPruning;
+  const float kLpPruning;
+  const float kLpPruningBound;
+
 
 
 };

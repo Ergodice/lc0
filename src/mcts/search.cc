@@ -2300,7 +2300,9 @@ void SearchWorker::CollectCollisions() {
 // 4. Run NN computation.
 // ~~~~~~~~~~~~~~~~~~~~~~
 void SearchWorker::RunNNComputation() {
-  computation_->ComputeBlocking(params_.GetPolicySoftmaxTemp(), 0.2f);
+  
+  computation_->ComputeBlocking(params_.GetPolicySoftmaxTemp(), params_.GetLpPruning(),
+    params_.GetUseLpPruning() ? params_.GetLpPruningBound() : 0.0f);
 }
 
 // 5. Retrieve NN computations (and terminal values) into nodes.

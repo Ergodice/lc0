@@ -545,6 +545,16 @@ const OptionId SearchParams::kUseDisgustId{
     "use-disgust", "UseDisgust",
     "Whether to reduce exploration on extremely bad moves."};
 
+const OptionId SearchParams::kUseLpPruningId{
+    "use-lp-pruning", "UseLpPruning",
+    "Whether to prune low policies."};
+
+const OptionId SearchParams::kLpPruningId{"lp-pruning", "LpPruning",
+                                             "How much to prune low policies."};
+const OptionId SearchParams::kLpPruningBoundId{"lp-pruning-bound", "LpPruningBound",
+                                          "Difference between lowest policy needed to prune."};
+
+
 
 
 
@@ -695,6 +705,10 @@ void SearchParams::Populate(OptionsParser* options) {
 
   options->Add<BoolOption>(kSearchSpinBackoffId) = false;
 
+
+  options->Add<BoolOption>(kUseLpPruningId) = false;
+  options->Add<FloatOption>(kLpPruningId, 0.0f, 1.0f) = 0.2f;
+  options->Add<FloatOption>(kLpPruningBoundId, 0.0f, 10.0f) = 1.3f;
 
   options->HideOption(kNoiseEpsilonId);
   options->HideOption(kNoiseAlphaId);
@@ -854,6 +868,9 @@ SearchParams::SearchParams(const OptionsDict& options)
       kUseDisgust(options.Get<bool>(kUseDisgustId)),
 
 
+      kUseLpPruning(options.Get<bool>(kUseLpPruningId)),
+      kLpPruning(options.Get<float>(kLpPruningId)),
+      kLpPruningBound(options.Get<float>(kLpPruningBoundId)),
 
 
       kEasyEvalWeightDecay(options.Get<float>(kEasyEvalWeightDecayId)),

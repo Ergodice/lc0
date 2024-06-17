@@ -96,7 +96,7 @@ void CachingComputation::PopLastInputHit() {
   batch_.pop_back();
 }
 
-void CachingComputation::ComputeBlocking(float softmax_temp, float lp_pruning) {
+void CachingComputation::ComputeBlocking(float softmax_temp, float lp_pruning, float lp_pruning_bound) {
   if (parent_->GetBatchSize() == 0) return;
   parent_->ComputeBlocking();
 
@@ -143,8 +143,10 @@ void CachingComputation::ComputeBlocking(float softmax_temp, float lp_pruning) {
         // Perform softmax and take into account policy softmax temperature T.
         // Note that we want to calculate (exp(p-max_p))^(1/T) =
         // exp((p-max_p)/T).
+
+        
         float p = intermediate[ct];
-        if (p <= 1.3 * min_p) {
+        if (p <= lp_pruning_bound * min_p) {
           p *= lp_pruning;
         }
         intermediate[ct] = p;
