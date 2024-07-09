@@ -47,7 +47,6 @@ namespace lczero {
 
 namespace {
 
-
 // Maximum delay between outputting "uci info" when nothing interesting happens.
 const int kUciInfoMinimumFrequencyMs = 5000;
 
@@ -603,7 +602,8 @@ std::vector<std::string> Search::GetVerboseStats(Node* node) const {
   auto print = [](auto* oss, auto pre, auto v, auto post, auto w, int p = 0) {
     *oss << pre << std::setw(w) << std::setprecision(p) << v << post;
   };
-  auto print_head = [&](auto* oss, auto label, int i, auto n, auto f, auto p, auto c) {
+  auto print_head = [&](auto* oss, auto label, int i, auto n, auto f, auto p,
+                        auto c) {
     *oss << std::fixed;
     print(oss, "", label, " ", 5);
     print(oss, "(", i, ") ", 4);
@@ -612,7 +612,6 @@ std::vector<std::string> Search::GetVerboseStats(Node* node) const {
     print(oss, "(+", f, ") ", 2);
     print(oss, "(P: ", p * 100, "%) ", 5, p >= 0.99995f ? 1 : 2);
     print(oss, "C: ", c, " ", 4);
-
   };
   auto print_stats = [&](auto* oss, const auto* n) {
     const auto sign = n == node ? -1 : 1;
@@ -692,10 +691,12 @@ std::vector<std::string> Search::GetVerboseStats(Node* node) const {
   print_stats(&oss, node);
   print_tail(&oss, node);
 
-  oss << std::endl << "Low nodes: " << total_low_nodes_
-       << " NN queries: " << total_nn_queries_
+  oss << std::endl
+      << "Low nodes: " << total_low_nodes_
+      << " NN queries: " << total_nn_queries_
       << " Playouts: " << total_playouts_ + initial_visits_
-      << " Wasted queries: " << total_wasted_queries_ << std::endl;
+      << " Wasted queries: " << total_wasted_queries_ 
+      << " CHT buckets " << total_cht_buckets_ << std::endl;
 
   print(&oss, "(U coeff: ", U_coeff, ") ", 15, 2);
 
@@ -1840,16 +1841,11 @@ void SearchWorker::PickNodesToExtendTask(
         top_utils[i] = -999;
       }
 
-			
-
       // the root eval from my perspective
       const float root_eval =
           search_->root_node_->GetWL() * ((full_path.size() % 2 == 0) ? 1 : -1);
 
-
-
-
-			// Root depth is 1 here, while for GetDrawScore() it's 0-based, that's why
+      // Root depth is 1 here, while for GetDrawScore() it's 0-based, that's why
       // the weirdness.
       const float draw_score =
           (full_path.size() % 2 == 0) ? odd_draw_score : even_draw_score;
@@ -1859,7 +1855,7 @@ void SearchWorker::PickNodesToExtendTask(
         int index = child->Index();
         visited_pol += child->GetP();
         float q = child->GetQ(draw_score);
-				
+
         current_util[index] = q + m_evaluator.GetMUtility(child, q);
 
         visited[index] = true;
@@ -1884,11 +1880,11 @@ void SearchWorker::PickNodesToExtendTask(
           (num_boost_t1 == 0 || !params_.GetUsePolicyBoosting())
               ? 999
               : top_utils[num_boost_t1 - 1];
-		  
-			const float min_policy_boost_util_t2 =
-					(num_boost_t2 == 0 || !params_.GetUsePolicyBoosting())
-							? 999
-							: top_utils[num_boost_t2 - 1];
+
+      const float min_policy_boost_util_t2 =
+          (num_boost_t2 == 0 || !params_.GetUsePolicyBoosting())
+              ? 999
+              : top_utils[num_boost_t2 - 1];
       const float policy_boost_t1 = params_.GetTopPolicyBoost();
       const float policy_boost_t2 = params_.GetTopPolicyTierTwoBoost();
 
@@ -1900,16 +1896,14 @@ void SearchWorker::PickNodesToExtendTask(
         }
       }
 
-			// If the eval at root is positive but at the current node is negative,
+      // If the eval at root is positive but at the current node is negative,
       // greatly increase first play urgency
-			float fpu_boost = 1;
+      float fpu_boost = 1;
       if (root_eval > 0 && -node->GetWL() < 0) {
         fpu_boost = params_.GetFpuBoost();
       }
 
-
-
-			const float puct_mult =
+      const float puct_mult =
           ComputeExploreFactor(params_, node->GetWeight(), node->GetWL(),
                                node->GetVS(), node->GetE(), is_root_node);
       int cache_filled_idx = -1;
@@ -1946,26 +1940,23 @@ void SearchWorker::PickNodesToExtendTask(
                 p = std::max(p, policy_boost_t2);
               }
 
-							// if move has extremely bad eval then reduce exploration
-							if (params_.GetUseDisgust()) {
+              // if move has extremely bad eval then reduce exploration
+              if (params_.GetUseDisgust()) {
                 if (util <= -0.98) {
                   p /= 4;
                 } else if (util <= -0.95) {
                   p /= 2;
                 }
               }
-            } 
-            else {
+            } else {
               p = p * fpu_boost;
               if (check) {
                 p = fmax(p, 0.02);
                 p *= params_.GetCheckFpuBoost();
-
               }
             }
 
-            current_score[idx] =
-              p * puct_mult / (1 + weightstarted) + util;
+            current_score[idx] = p * puct_mult / (1 + weightstarted) + util;
             cache_filled_idx++;
           }
           if (is_root_node) {
@@ -2001,8 +1992,8 @@ void SearchWorker::PickNodesToExtendTask(
           }
           if (can_exit) break;
           if (weightstarted == 0) {
-						// NOTE: This logic no longer applies with fpu boosting of checks
-            // 
+            // NOTE: This logic no longer applies with fpu boosting of checks
+            //
             // One more loop will get 2 unvisited nodes, which is sufficient to
             // ensure second best is correct. This relies upon the fact that
             // edges are sorted in policy decreasing order.
@@ -2285,9 +2276,9 @@ void SearchWorker::CollectCollisions() {
 // 4. Run NN computation.
 // ~~~~~~~~~~~~~~~~~~~~~~
 void SearchWorker::RunNNComputation() {
-  
-  computation_->ComputeBlocking(params_.GetPolicySoftmaxTemp(), params_.GetLpPruning(),
-    params_.GetUseLpPruning() ? params_.GetLpPruningBound() : 0.0f);
+  computation_->ComputeBlocking(
+      params_.GetPolicySoftmaxTemp(), params_.GetLpPruning(),
+      params_.GetUseLpPruning() ? params_.GetLpPruningBound() : 0.0f);
 }
 
 // 5. Retrieve NN computations (and terminal values) into nodes.
@@ -2466,7 +2457,6 @@ void SearchWorker::DoBackupUpdateSingleNode(
   float d_delta = 0.0f;
   float m_delta = 0.0f;
   float vs_delta = 0.0f;
-  
 
   bool use_correction_history = params_.GetUseCorrectionHistory();
 
@@ -2632,7 +2622,7 @@ void SearchWorker::DoBackupUpdateSingleNode(
     nr = pr;
     nm = pm;
   }
-	
+
   search_->total_playouts_ += node_to_process.multivisit;
   search_->cum_depth_ +=
       node_to_process.path.size() * node_to_process.multivisit;
@@ -2643,12 +2633,10 @@ void SearchWorker::DoBackupUpdateSingleNode(
   }
   if (node_to_process.ShouldAddToInput()) {
     search_->total_nn_queries_++;
-    if (std::abs(  nl->GetWL() ) > .98) {
+    if (std::abs(nl->GetWL()) > .98) {
       search_->total_wasted_queries_++;
     }
   }
-
-	
 }
 
 bool SearchWorker::MaybeSetBounds(Node* p, float m, uint32_t* n_to_fix,
