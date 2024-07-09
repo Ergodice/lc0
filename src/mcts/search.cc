@@ -691,7 +691,7 @@ std::vector<std::string> Search::GetVerboseStats(Node* node) const {
   oss << std::endl
       << "Low nodes: " << total_low_nodes_
       << " NN queries: " << total_nn_queries_
-      << " Playouts: " << total_playouts_ + initial_visits_ << " CHT buckets"
+      << " Playouts: " << total_playouts_ + initial_visits_ << " CHT buckets "
       << total_cht_buckets_ <<
 
       std::endl;
