@@ -206,7 +206,10 @@ class SearchParams {
   float GetDesperationPriorWeight() const { return kDesperationPriorWeight; }
   bool GetUseDesperation() const { return kUseDesperation;  }
 
-	
+	float GetFpuBoost() const { return kFpuBoost; }
+  float GetCheckFpuBoost() const { return kCheckFpuBoost; }
+
+
 
 	float GetTopPolicyBoost() const { return kTopPolicyBoost; }
 
@@ -218,6 +221,13 @@ class SearchParams {
 
   bool GetUsePolicyBoosting() const { return kUsePolicyBoosting; }
 
+  bool GetUseDisgust() const { return kUseDisgust; }
+
+  
+
+  bool GetUseLpPruning() const { return kUseLpPruning; }
+  float GetLpPruning() const { return kLpPruning; }
+  float GetLpPruningBound() const { return kLpPruningBound; }
 
   bool GetSearchSpinBackoff() const { return kSearchSpinBackoff; }
 
@@ -335,6 +345,16 @@ class SearchParams {
   static const OptionId kTopPolicyTierTwoBoostId;
   static const OptionId kTopPolicyTierTwoNumBoostId;
   static const OptionId kUsePolicyBoostingId;
+	
+  static const OptionId kFpuBoostId;
+  static const OptionId kCheckFpuBoostId;
+
+  static const OptionId kUseDisgustId;
+
+
+  static const OptionId kUseLpPruningId;
+  static const OptionId kLpPruningId;
+  static const OptionId kLpPruningBoundId;
 
 
 
@@ -434,6 +454,21 @@ class SearchParams {
   const float kDesperationHigh;
   const float kDesperationPriorWeight;
   const bool kUseDesperation;
+	
+  const float kFpuBoost;
+
+  const float kCheckFpuBoost;
+
+
+  const bool kUseDisgust;
+
+
+  const bool kUseLpPruning;
+  const float kLpPruning;
+  const float kLpPruningBound;
+
+
+
 
   
 

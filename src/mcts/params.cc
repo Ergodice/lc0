@@ -533,6 +533,26 @@ const OptionId SearchParams::kTopPolicyTierTwoNumBoostId{
 const OptionId SearchParams::kUsePolicyBoostingId{
     "use-policy-boosting", "UsePolicyBoosting",
     "Whether to use policy boosting."};
+const OptionId SearchParams::kFpuBoostId{
+    "fpu-boost", "FpuBoost",
+    "How much to boost fpu on desperate positions. 1 is no effect"};
+const OptionId SearchParams::kCheckFpuBoostId{
+    "check-fpu-boost", "CheckFpuBoost",
+    "How much to boost fpu on checks. 1 is no effect"};
+
+
+const OptionId SearchParams::kUseDisgustId{
+    "use-disgust", "UseDisgust",
+    "Whether to reduce exploration on extremely bad moves."};
+
+const OptionId SearchParams::kUseLpPruningId{
+    "use-lp-pruning", "UseLpPruning",
+    "Whether to prune low policies."};
+
+const OptionId SearchParams::kLpPruningId{"lp-pruning", "LpPruning",
+                                             "How much to prune low policies."};
+const OptionId SearchParams::kLpPruningBoundId{"lp-pruning-bound", "LpPruningBound",
+                                          "Difference between lowest policy needed to prune."};
 
 const OptionId SearchParams::kSearchSpinBackoffId{
     "search-spin-backoff", "SearchSpinBackoff",
@@ -689,11 +709,19 @@ void SearchParams::Populate(OptionsParser* options) {
 
 
 	
+	options->Add<FloatOption>(kFpuBoostId, 1.0f, 10.0f) = 1.0f;
+  options->Add<FloatOption>(kCheckFpuBoostId, 1.0f, 10.0f) = 1.0f;
 
 
+	options->Add<BoolOption>(kUseDisgustId) = false;
 
 
   options->Add<BoolOption>(kSearchSpinBackoffId) = false;
+
+
+  options->Add<BoolOption>(kUseLpPruningId) = false;
+  options->Add<FloatOption>(kLpPruningId, 0.0f, 1.0f) = 0.2f;
+  options->Add<FloatOption>(kLpPruningBoundId, 0.0f, 10.0f) = 1.3f;
 
   options->HideOption(kNoiseEpsilonId);
   options->HideOption(kNoiseAlphaId);
@@ -846,7 +874,16 @@ SearchParams::SearchParams(const OptionsDict& options)
       kTopPolicyTierTwoNumBoost(options.Get<int>(kTopPolicyTierTwoNumBoostId)),
 			kUsePolicyBoosting(options.Get<bool>(kUsePolicyBoostingId)),
 
-		
+			kFpuBoost(options.Get<float>(kFpuBoostId)),
+      kCheckFpuBoost(options.Get<float>(kCheckFpuBoostId)),
+
+
+      kUseDisgust(options.Get<bool>(kUseDisgustId)),
+
+
+      kUseLpPruning(options.Get<bool>(kUseLpPruningId)),
+      kLpPruning(options.Get<float>(kLpPruningId)),
+      kLpPruningBound(options.Get<float>(kLpPruningBoundId)),
 
       kUseCorrectionHistory(options.Get<bool>(kUseCorrectionHistoryId)),
       kCorrectionHistoryAlpha(options.Get<float>(kCorrectionHistoryAlphaId)),

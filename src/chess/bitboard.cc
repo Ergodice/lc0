@@ -326,11 +326,11 @@ Move::Move(const std::string& str, bool black) {
 }
 
 uint16_t Move::as_packed_int() const {
+  uint16_t out = from().as_int() * 64 + to().as_int();
   if (promotion() == Promotion::Knight) {
-    return from().as_int() * 64 + to().as_int();
+    return out;
   } else {
-    return static_cast<int>(promotion()) * 64 * 64 + from().as_int() * 64 +
-           to().as_int();
+    return static_cast<int>(promotion()) * 64 * 64 + out;
   }
 }
 
