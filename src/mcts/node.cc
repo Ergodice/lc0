@@ -190,6 +190,10 @@ uint64_t Node::GetCHHash() const {
   return low_node_ ? low_node_->GetCHHash() : 0;
 }
 
+uint64_t Node::GetCHHash2() const {
+  return low_node_ ? low_node_->GetCHHash2() : 0;
+}
+
 uint64_t Node::GetHash() const {
   return low_node_ ? low_node_->GetHash() : 0;
 }
@@ -384,9 +388,15 @@ void LowNode::FinalizeScoreUpdate(float v, float d, float m, float vs,
   if (cht_entry_ != nullptr) {
     cht_entry_->weightSum += multiweight;
     cht_entry_->deltaSum += multiweight * (v_ - v);
-
     ch_delta_ = (cht_entry_->weightSum > 0)
                     ? cht_entry_->deltaSum / cht_entry_->weightSum
+                    : 0.0f;
+  }
+  if (cht_entry_2_ != nullptr) {
+    cht_entry_2_->weightSum += multiweight;
+    cht_entry_2_->deltaSum += multiweight * (v_ - v);
+    ch_delta_ = (cht_entry_2_->weightSum > 0)
+                    ? cht_entry_2_->deltaSum / cht_entry_2_->weightSum
                     : 0.0f;
   }
 
@@ -421,7 +431,9 @@ void LowNode::AdjustForTerminal(float v, float d, float m, float vs,
   if (cht_entry_ != nullptr ) {cht_entry_->deltaSum -= multiweight * v;
   }
 
-
+  if (cht_entry_2_ != nullptr) {
+    cht_entry_2_->deltaSum -= multiweight * v;
+  }
 
   assert(WLDMInvariantsHold());
 }

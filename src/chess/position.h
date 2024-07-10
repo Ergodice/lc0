@@ -172,7 +172,7 @@ class PositionHistory {
   // Builds a hash from last X positions.
   uint64_t HashLast(int positions, int r50_ply = -1) const;
 
-  uint64_t CHHash() const;
+  uint64_t CHHash(bool with_move) const;
 
   // Checks for any repetitions since the last time 50 move rule was reset.
   bool DidRepeatSinceLastZeroingMove() const;

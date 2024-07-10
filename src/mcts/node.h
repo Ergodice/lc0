@@ -315,6 +315,8 @@ class Node {
   float GetCHDelta() const;
   uint64_t GetHash() const;
   uint64_t GetCHHash() const;
+  uint64_t GetCHHash2() const;
+
 
   void SetE(float e);
 
@@ -495,6 +497,7 @@ class LowNode {
         v_(p.v_),
         hash_(p.hash_),
         ch_hash_(p.ch_hash_),
+        ch_hash_2_(p.ch_hash_2_),
         d_(p.d_),
         m_(p.m_),
         vs_(p.vs_),
@@ -516,6 +519,7 @@ class LowNode {
         v_(p.v_),
         hash_(hash),
         ch_hash_(p.ch_hash_),
+        ch_hash_2_(p.ch_hash_2_),
         d_(p.d_),
         m_(p.m_),
         vs_(p.vs_),
@@ -568,6 +572,8 @@ class LowNode {
   }
 
   void SetCHHash(uint64_t ch_hash) { ch_hash_ = ch_hash; }
+  void SetCHHash2(uint64_t ch_hash) { ch_hash_2_ = ch_hash; }
+
 
   // Gets the first child.
   atomic_unique_ptr<Node>* GetChild() { return &child_; }
@@ -594,9 +600,15 @@ class LowNode {
 
   uint64_t GetHash() const { return hash_; }
   uint64_t GetCHHash() const { return ch_hash_; }
+  uint64_t GetCHHash2() const { return ch_hash_2_; }
+
   CorrHistEntry* GetCHTEntry() const { return cht_entry_; }
+  CorrHistEntry* GetCHTEntry2() const { return cht_entry_2_; }
+
 
   void SetCHTEntry(CorrHistEntry* cht_entry) { cht_entry_ = cht_entry; }
+  void SetCHTEntry2(CorrHistEntry* cht_entry) { cht_entry_2_ = cht_entry; }
+
 
 
 
@@ -701,8 +713,11 @@ class LowNode {
   uint64_t hash_ = 0;
 
   uint64_t ch_hash_ = 0;
+  uint64_t ch_hash_2_ = 0;
+
 
   CorrHistEntry* cht_entry_ = nullptr;
+  CorrHistEntry* cht_entry_2_ = nullptr;
 
 
 
@@ -1107,8 +1122,8 @@ class NodeTree {
                           int r50_ply = -1) const {
     return history.HashLast(hash_history_length_, r50_ply);
   }
-  uint64_t GetCHHash(const PositionHistory& history) const {
-    return history.CHHash();
+  uint64_t GetCHHash(const PositionHistory& history, bool with_move) const {
+    return history.CHHash(with_move);
   }
 
   

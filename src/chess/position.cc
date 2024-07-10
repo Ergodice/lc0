@@ -167,16 +167,18 @@ uint64_t PositionHistory::HashLast(int positions, int r50_ply) const {
 }
 
 
-uint64_t PositionHistory::CHHash() const { 
+uint64_t PositionHistory::CHHash(bool with_move) const { 
   Position last = Last();
   const Move* last_move = LastMove();
   uint64_t position_hash = last.CHHash();
- // if (last_move) {
-	//	position_hash = HashCat(position_hash, last_move->Hash());
- //   char moved_piece = GetPieceAt(last.GetBoard(), last_move->to().row(),
- //                                             last_move->to().col());
- //   position_hash = HashCat(position_hash, moved_piece);
-	//}
+  // make sure we don't have the same hash for primary and secondary cht entries
+  position_hash = HashCat(position_hash, with_move); 
+  if (with_move && last_move) {
+		position_hash = HashCat(position_hash, last_move->Hash());
+    char moved_piece = GetPieceAt(last.GetBoard(), last_move->to().row(),
+                                              last_move->to().col());
+    position_hash = HashCat(position_hash, moved_piece);
+	}
 
   return position_hash;
 }

@@ -602,6 +602,14 @@ std::vector<std::string> Search::GetVerboseStats(Node* node) const {
   auto print = [](auto* oss, auto pre, auto v, auto post, auto w, int p = 0) {
     *oss << pre << std::setw(w) << std::setprecision(p) << v << post;
   };
+  auto print_cht = [&](auto* oss, CorrHistEntry* cht_entry) {
+		if (cht_entry) {
+			print(oss, "(CHW: ", cht_entry->weightSum, ") ", 6, 5);
+			print(oss, "(CHD: ",
+        						-cht_entry->deltaSum / (cht_entry->weightSum + 0.0001f), ") ", 6, 5);
+			print(oss, "(CHN: ", cht_entry->numMembers, ") ", 6);
+		}
+	};  
   auto print_head = [&](auto* oss, auto label, int i, auto n, auto f, auto p,
                         auto c) {
     *oss << std::fixed;
@@ -632,13 +640,10 @@ std::vector<std::string> Search::GetVerboseStats(Node* node) const {
       print(oss, "(E: ", n->GetE(), ") ", 6, 5);
       LowNode* low_node = n->GetLowNode();
       if (low_node != nullptr) {
-        CorrHistEntry* cht_entry = dag_->CHTGetOrCreate(low_node->GetCHHash());
+        
+        print_cht(oss, low_node->GetCHTEntry());
+        print_cht(oss, low_node->GetCHTEntry2());
 
-        print(oss, "(CHW: ", cht_entry->weightSum, ") ", 6, 5);
-        print(oss, "(CHD: ",
-              -sign * cht_entry->deltaSum / (cht_entry->weightSum + 0.0001f),
-              ") ", 6, 5);
-        print(oss, "(CHN: ", cht_entry->numMembers, ") ", 6);
       }
       print(oss, "(V: ", sign * n->GetV(), ") ", 6, 5);
 
@@ -2214,7 +2219,9 @@ void SearchWorker::ExtendNode(NodeToProcess& picked_node) {
   // Check the transposition table first and NN cache second before asking for
   // NN evaluation.
   picked_node.hash = search_->dag_->GetHistoryHash(history);
-  picked_node.ch_hash = search_->dag_->GetCHHash(history);
+  picked_node.ch_hash = search_->dag_->GetCHHash(history, true);
+  picked_node.ch_hash_2 = search_->dag_->GetCHHash(history, false);
+
 
   auto tt_low_node = search_->dag_->TTFind(picked_node.hash);
   if (tt_low_node != nullptr) {
@@ -2337,6 +2344,8 @@ void SearchWorker::FetchSingleNodeResult(NodeToProcess* node_to_process,
         }
         node_to_process->tt_low_node->SetNNEval(nn_eval);
         node_to_process->tt_low_node->SetCHHash(node_to_process->ch_hash);
+        node_to_process->tt_low_node->SetCHHash2(node_to_process->ch_hash_2);
+
       }
     }
   }
@@ -2460,20 +2469,31 @@ void SearchWorker::DoBackupUpdateSingleNode(
 
   bool use_correction_history = params_.GetUseCorrectionHistory();
 
-  float ch_delta;
-  CorrHistEntry* ntp_cht_entry;
+  float ch_delta = 0.0f;
+  CorrHistEntry* ntp_cht_entry = nullptr;
+  CorrHistEntry* ntp_cht_entry_2 = nullptr;
+
 
   if (use_correction_history) {
     ntp_cht_entry = search_->dag_->CHTGetOrCreate(node_to_process.ch_hash);
+    ntp_cht_entry_2 = search_->dag_->CHTGetOrCreate(node_to_process.ch_hash_2);
+
     if (ntp_cht_entry->weightSum == 0) {
-      ch_delta = 0;
-      search_->total_cht_buckets_++;
-    } else
+      if (ntp_cht_entry_2->weightSum > 0) {
+        ch_delta = ntp_cht_entry_2->deltaSum / ntp_cht_entry_2->weightSum;
+      }
+    } 
+      else {
       ch_delta = ntp_cht_entry->deltaSum / ntp_cht_entry->weightSum;
-  } else {
-    ch_delta = 0;
-    ntp_cht_entry = nullptr;
+    }
   }
+    
+  // this variable is inaccurately named,
+  // it tracks the number of low nodes which don't find a bucket
+  search_->total_cht_buckets_ += (ch_delta == 0.0f);
+
+
+
   float ch_lambda = params_.GetCorrectionHistoryLambda();
   float ch_alpha = params_.GetCorrectionHistoryAlpha();
 
@@ -2509,10 +2529,13 @@ void SearchWorker::DoBackupUpdateSingleNode(
                             node_to_process.multivisit,
                             node_to_process.multivisit * avg_weight);
 
-    // for testing cht is per node
     if (ntp_cht_entry != nullptr && !nl->IsTwin()) {
       nl->SetCHTEntry(ntp_cht_entry);
       ntp_cht_entry->numMembers++;
+    }
+    if (ntp_cht_entry_2 != nullptr && !nl->IsTwin()) {
+      nl->SetCHTEntry2(ntp_cht_entry_2);
+      ntp_cht_entry_2->numMembers++;
     }
   }
 
