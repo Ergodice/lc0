@@ -136,17 +136,14 @@ class ChessBoard {
 
         // below would count the number of each piece type on both sides
 
-        count_bits(rooks().as_int() & our_pieces_.as_int()),
-        count_bits(rooks().as_int() & their_pieces_.as_int()),
-        count_bits(bishops().as_int() & our_pieces_.as_int()),  
-        count_bits(bishops().as_int() & their_pieces_.as_int()),
-        count_bits(knights().as_int() & our_pieces_.as_int()),
-        count_bits(knights().as_int() & their_pieces_.as_int()),
+        //count_bits(rooks().as_int() & our_pieces_.as_int()),
+        //count_bits(rooks().as_int() & their_pieces_.as_int()),
+        //count_bits(bishops().as_int() & our_pieces_.as_int()),  
+        //count_bits(bishops().as_int() & their_pieces_.as_int()),
+        //count_bits(knights().as_int() & our_pieces_.as_int()),
+        //count_bits(knights().as_int() & their_pieces_.as_int()),
         count_bits(queens().as_int() & our_pieces_.as_int()),
-        count_bits(  queens().as_int() & their_pieces_.as_int()),
-
-
-
+        count_bits(  queens().as_int() & their_pieces_.as_int())
     });
 
   }
