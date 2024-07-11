@@ -103,6 +103,8 @@ float Edge::GetP() const {
   return ret;
 }
 
+bool Edge::GetCheck() const { return move_.check(); }
+
 std::string Edge::DebugString() const {
   std::ostringstream oss;
   oss << "Move: " << move_.as_string() << " p_: " << p_ << " GetP: " << GetP();
