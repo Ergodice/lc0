@@ -132,8 +132,9 @@ void V6TrainingDataArray::Add(const Node* node, const PositionHistory& history,
     plane = ReverseBitsInBytes(planes[plane_idx++].mask);
   }
 
+  int total_n = node->GetChildrenVisits();
+
   // Populate probabilities.
-  auto total_n = node->GetChildrenVisits();
   // Prevent garbage/invalid training data from being uploaded to server.
   // It's possible to have N=0 when there is only one legal move in position
   // (due to smart pruning).
@@ -166,11 +167,70 @@ void V6TrainingDataArray::Add(const Node* node, const PositionHistory& history,
       max_p = std::max(max_p, p);
     }
   }
+
+  // We preprocess the probabilities by pruning playouts consistent with Katago.
+  // First we calculate the exploration value of the most visited node
+  // (which is the best move).
+
+  const float cpuct = node->GetCpuct();
+  const float puct_mult = cpuct * std::sqrt(std::max(node->GetChildrenVisits(), 1u));
+  float value_at_most_visited = -std::numeric_limits<float>::infinity();
+  int max_visits = -1;
+
+  for (const auto& child : node->Edges()) {
+    if (child.GetN() >= max_visits) {
+      value_at_most_visited = child.GetWL(0.0f) +
+                              puct_mult * child.GetOrigP() / (1 + child.GetN());
+      max_visits = child.GetN();
+    }
+  }
+
+  total_n = 0;
   float total = 0.0;
   auto it = intermediate.begin();
   for (const auto& child : node->Edges()) {
     auto nn_idx = child.edge()->GetMove().as_nn_index(transform);
-    float fracv = total_n > 0 ? child.GetN() / static_cast<float>(total_n) : 1;
+    // We prune each move until its explore value is less than
+    // value_at_most_visited:
+
+    // We calculate what the n would need to be for its explore value to be
+    // equal to the explore value at the most visited node
+    int pruned_n = child.GetN();
+    // this condition makes sure we don't have negative values  
+    // where wl is at least value_at_most_visited
+    if (child.GetWL(-1.0f) < value_at_most_visited) {
+      float n_needed = (value_at_most_visited - child.GetWL(-1.0f)) /
+                           (puct_mult * child.GetOrigP()) -
+                       1;
+      pruned_n = std::min(child.GetN(), static_cast<uint32_t>(std::ceil(n_needed)));
+      pruned_n = std::max(0, pruned_n);
+      if (pruned_n == 1) pruned_n = 0;
+      assert(pruned_n >= 0);
+    }
+    total_n += pruned_n;
+  }
+
+  for (const auto& child : node->Edges()) {
+    auto nn_idx = child.edge()->GetMove().as_nn_index(transform);
+    // We prune each move until its explore value is less than
+    // value_at_most_visited:
+
+    // We calculate what the n would need to be for its explore value to be
+    // equal to the explore value at the most visited node
+    int pruned_n = child.GetN();
+    // this condition makes sure we don't have negative values
+    // where wl is at least value_at_most_visited
+    if (child.GetWL(-1.0f) < value_at_most_visited) {
+      float n_needed = (value_at_most_visited - child.GetWL(-1.0f)) /
+                           (puct_mult * child.GetOrigP()) -
+                       1;
+      pruned_n = std::min(child.GetN(), static_cast<uint32_t>(std::ceil(n_needed)));
+      pruned_n = std::max(0, pruned_n);
+      if (pruned_n == 1) pruned_n = 0;
+      assert(pruned_n >= 0);
+    }
+
+    float fracv = total_n > 0 ? pruned_n / static_cast<float>(total_n) : 1;
     if (nneval) {
       float P = std::exp(*it - max_p);
       if (fracv > 0) {

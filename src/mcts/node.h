@@ -95,6 +95,11 @@ class Edge {
   float GetP() const;
   void SetP(float val);
 
+  float GetOrigP() const;
+  void SetOrigP(float val);
+
+
+
   // Debug information about the edge.
   std::string DebugString() const;
 
@@ -107,6 +112,7 @@ class Edge {
   // Probability that this move will be made, from the policy head of the neural
   // network; compressed to a 16 bit format (5 bits exp, 11 bits significand).
   uint16_t p_ = 0;
+  uint16_t orig_p_ = 0;
   friend class Node;
 };
 
@@ -170,6 +176,10 @@ class Node {
   float GetWL() const { return wl_; }
   float GetD() const { return d_; }
   float GetM() const { return m_; }
+  float GetCpuct() const {return cpuct_;}
+
+  void SetCpuct(float cpuct) { cpuct_ = cpuct; }
+
 
   // Returns whether the node is known to be draw/lose/win.
   bool IsTerminal() const { return terminal_type_ != Terminal::NonTerminal; }
@@ -304,6 +314,9 @@ class Node {
   float d_ = 0.0f;
   // Estimated remaining plies.
   float m_ = 0.0f;
+
+
+  float cpuct_ = 0.0f;
   // How many completed visits this node had.
   uint32_t n_ = 0;
   // (AKA virtual loss.) How many threads currently process this node (started
@@ -398,6 +411,8 @@ class EdgeAndNode {
 
   // Edge related getters.
   float GetP() const { return edge_->GetP(); }
+  float GetOrigP() const { return edge_->GetOrigP(); }
+
   Move GetMove(bool flip = false) const {
     return edge_ ? edge_->GetMove(flip) : Move();
   }
@@ -407,6 +422,7 @@ class EdgeAndNode {
   float GetU(float numerator) const {
     return numerator * GetP() / (1 + GetNStarted());
   }
+
 
   std::string DebugString() const;
 
