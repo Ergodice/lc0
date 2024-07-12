@@ -188,8 +188,8 @@ uint64_t PositionHistory::CHHash() const {
 		}
 
     // add in the move before that one, if available
-    if (moves_.size() > 1) {
-                  const Move* second_last_move = &moves_[moves_.size() - 2];
+    if (moves_.size() > 2) {
+                  const Move* second_last_move = &moves_[moves_.size() - 3];
 			position_hash = HashCat(position_hash, second_last_move->Hash());
 			moved_piece = GetPieceAt(last.GetBoard(), second_last_move->to().row(),
         															 second_last_move->to().col());
