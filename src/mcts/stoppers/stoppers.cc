@@ -219,7 +219,7 @@ bool SmartPruningStopper::ShouldStop(const IterationStats& stats,
   if (smart_pruning_factor_ <= 0.0) return false;
   Mutex::Lock lock(mutex_);
 
-  int div = stats.confident_net ? 3 : 1;
+  int div = stats.policy_is_confident ? 3 : 1;
 
   if (stats.edge_n.size() == 1) {
     LOGFILE << "Only one possible move. Moving immediately.";

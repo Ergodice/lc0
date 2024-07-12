@@ -535,8 +535,8 @@ bool Node::PolicyIsConfident() const {
 		}
 	}
 	return max_p > 0.5f && second_max_p < 0.025f;
-    }
-  }
+}
+  
 
 
 }
