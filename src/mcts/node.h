@@ -385,6 +385,8 @@ class Node {
   void SetLowNode(LowNode* low_node);
   void UnsetLowNode();
 
+  bool PolicyIsConfident() const;
+
   // Debug information about the node.
   std::string DebugString() const;
   // Return string describing the edge from node's parent to its low node in the
