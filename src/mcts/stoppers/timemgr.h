@@ -55,6 +55,7 @@ struct IterationStats {
   // smooth time manager is the default.
   bool win_found = false;
   bool may_resign = false;
+  bool confident_net = false;
   int num_losing_edges = 0;
 
   enum class TimeUsageHint { kNormal, kNeedMoreTime, kImmediateMove };

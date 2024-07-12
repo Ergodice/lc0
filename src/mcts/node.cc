@@ -191,6 +191,7 @@ uint64_t Node::GetHash() const {
 }
 
 
+
 const Edge& LowNode::GetEdgeAt(uint16_t index) const { return edges_[index]; }
 
 std::string Node::DebugString() const {
@@ -517,6 +518,29 @@ static std::string PtrToNodeName(const void* ptr) {
   return oss.str();
 }
 
+// look at the policy, if the largest is >.5 and the second highest is <.025 then we are
+// confident
+bool Node::PolicyIsConfident() const { 
+  if (GetNumEdges() < 2) return true;
+	float max_p = 0.0f;
+	float second_max_p = 0.0f;
+  for (const auto& edge : Edges()) {
+		const float p = edge.GetP();
+		if (p > max_p) {
+			second_max_p = max_p;
+			max_p = p;
+    }
+    else if (p > second_max_p) {
+			second_max_p = p;
+		}
+	}
+	return max_p > 0.5f && second_max_p < 0.025f;
+    }
+  }
+
+
+}
+
 std::string LowNode::DotNodeString() const {
   std::ostringstream oss;
   oss << PtrToNodeName(this) << " ["
@@ -671,6 +695,8 @@ bool Node::ZeroNInFlight() const {
 
   return true;
 }
+
+
 
 void Node::SortEdges() const {
   assert(low_node_);

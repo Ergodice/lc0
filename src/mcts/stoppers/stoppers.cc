@@ -218,6 +218,9 @@ bool SmartPruningStopper::ShouldStop(const IterationStats& stats,
                                      StoppersHints* hints) {
   if (smart_pruning_factor_ <= 0.0) return false;
   Mutex::Lock lock(mutex_);
+
+  int div = stats.confident_net ? 3 : 1;
+
   if (stats.edge_n.size() == 1) {
     LOGFILE << "Only one possible move. Moving immediately.";
     return true;
@@ -251,7 +254,7 @@ bool SmartPruningStopper::ShouldStop(const IterationStats& stats,
   const double remaining_time_s = hints->GetEstimatedRemainingTimeMs() / 1000.0;
   const auto remaining_playouts =
       std::min(remaining_time_s * nps / smart_pruning_factor_,
-               hints->GetEstimatedRemainingPlayouts() / smart_pruning_factor_);
+               hints->GetEstimatedRemainingPlayouts() / smart_pruning_factor_) / div;
 
   // May overflow if (nps/smart_pruning_factor) > 180 000 000, but that's not
   // very realistic.

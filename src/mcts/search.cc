@@ -704,6 +704,9 @@ std::vector<std::string> Search::GetVerboseStats(Node* node) const {
 
 	print(&oss, "(U coeff: ", U_coeff, ") ", 15, 2);
 
+  print(&oss, "(Conf P: ", node->PolicyIsConfident(), ") ", 3);
+
+
 
 
   infos.emplace_back(oss.str());
@@ -1066,6 +1069,7 @@ void Search::PopulateCommonIterationStats(IterationStats* stats) {
       nps_start_time_ = std::chrono::steady_clock::now();
     }
   }
+  stats->policy_is_confident = root_node_->PolicyIsConfident();
   stats->total_visits = total_playouts_ + initial_visits_;
   stats->total_allocated_nodes = dag_->AllocatedNodeCount();
   stats->nodes_since_movestart = total_playouts_;
