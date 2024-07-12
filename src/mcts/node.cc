@@ -534,7 +534,7 @@ bool Node::PolicyIsConfident() const {
 			second_max_p = p;
 		}
 	}
-	return max_p > 0.5f && second_max_p < 0.025f;
+	return max_p > 0.6f && second_max_p < 0.04f;
 }
 
 std::string LowNode::DotNodeString() const {
