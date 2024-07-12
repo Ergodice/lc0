@@ -186,6 +186,16 @@ uint64_t PositionHistory::CHHash() const {
                      last_move->to().row(), last_move->to().col());
       position_hash = HashCat(position_hash, captured_piece);
 		}
+
+    // add in the move before that one, if available
+    if (moves_.size() > 1) {
+                  const Move* second_last_move = &moves_[moves_.size() - 2];
+			position_hash = HashCat(position_hash, second_last_move->Hash());
+			moved_piece = GetPieceAt(last.GetBoard(), second_last_move->to().row(),
+        															 second_last_move->to().col());
+			position_hash = HashCat(position_hash, moved_piece);
+		}
+
 	}
 
   return position_hash;
