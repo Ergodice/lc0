@@ -62,8 +62,6 @@ void StoppersHints::Reset() {
   remaining_playouts_ = 4000000000;
   // NPS is not known.
   estimated_nps_.reset();
-
-  policy_is_confident = false;
 }
 
 }  // namespace lczero
