@@ -240,7 +240,7 @@ bool SmartPruningStopper::ShouldStop(const IterationStats& stats,
   }
   if (!first_eval_time_) return false;
   if (stats.edge_n.size() == 0) return false;
-  if (stats.time_since_movestart <
+  if (!stats.policy_is_confident && stats.time_since_movestart <
       *first_eval_time_ + kSmartPruningToleranceMs) {
     return false;
   }
