@@ -139,7 +139,9 @@ bool TimeLimitStopper::ShouldStop(const IterationStats& stats,
                                   StoppersHints* hints) {
   hints->UpdateEstimatedRemainingTimeMs(time_limit_ms_ -
                                         stats.time_since_movestart);
-  if (stats.time_since_movestart >= time_limit_ms_) {
+
+  int div = stats.policy_is_confident ? 3 : 1;
+  if (stats.time_since_movestart >= time_limit_ms_ / div) {
     LOGFILE << "Stopping search: Ran out of time.";
     return true;
   }
@@ -219,8 +221,6 @@ bool SmartPruningStopper::ShouldStop(const IterationStats& stats,
   if (smart_pruning_factor_ <= 0.0) return false;
   Mutex::Lock lock(mutex_);
 
-  int div = stats.policy_is_confident ? 3 : 1;
-
   if (stats.edge_n.size() == 1) {
     LOGFILE << "Only one possible move. Moving immediately.";
     return true;
@@ -240,7 +240,7 @@ bool SmartPruningStopper::ShouldStop(const IterationStats& stats,
   }
   if (!first_eval_time_) return false;
   if (stats.edge_n.size() == 0) return false;
-  if (!stats.policy_is_confident && stats.time_since_movestart <
+  if (stats.time_since_movestart <
       *first_eval_time_ + kSmartPruningToleranceMs) {
     return false;
   }
@@ -254,7 +254,7 @@ bool SmartPruningStopper::ShouldStop(const IterationStats& stats,
   const double remaining_time_s = hints->GetEstimatedRemainingTimeMs() / 1000.0;
   const auto remaining_playouts =
       std::min(remaining_time_s * nps / smart_pruning_factor_,
-               hints->GetEstimatedRemainingPlayouts() / smart_pruning_factor_) / div;
+               hints->GetEstimatedRemainingPlayouts() / smart_pruning_factor_);
 
   // May overflow if (nps/smart_pruning_factor) > 180 000 000, but that's not
   // very realistic.
