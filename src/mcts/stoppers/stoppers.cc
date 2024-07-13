@@ -137,10 +137,12 @@ TimeLimitStopper::TimeLimitStopper(int64_t time_limit_ms)
 
 bool TimeLimitStopper::ShouldStop(const IterationStats& stats,
                                   StoppersHints* hints) {
-  hints->UpdateEstimatedRemainingTimeMs(time_limit_ms_ -
-                                        stats.time_since_movestart);
 
   int div = stats.policy_is_confident ? 3 : 1;
+
+  hints->UpdateEstimatedRemainingTimeMs(time_limit_ms_ / div -
+                                        stats.time_since_movestart);
+
   if (stats.time_since_movestart >= time_limit_ms_ / div) {
     LOGFILE << "Stopping search: Ran out of time.";
     return true;
