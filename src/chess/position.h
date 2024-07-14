@@ -34,6 +34,9 @@
 
 namespace lczero {
 
+static constexpr int NUM_LAST_MOVES = 3;
+
+
 class Position {
  public:
   // From parent position and move.
@@ -107,7 +110,8 @@ class PositionHistory {
     positions_.reserve(
         std::max(other.positions_.size() + 1, other.positions_.capacity()));
     positions_ = other.positions_;
-    last_move_ = other.last_move_;
+    for (int i = 0; i < NUM_LAST_MOVES; i++)
+      last_moves_[i] = other.last_moves_[i];
 
   }
   PositionHistory(PositionHistory&& other) = default;
@@ -119,7 +123,8 @@ class PositionHistory {
         std::max(other.positions_.size() + 1, other.positions_.capacity()));
     positions_ = other.positions_;
 
-    last_move_ = other.last_move_;
+    for (int i = 0; i < NUM_LAST_MOVES; i++)
+      last_moves_[i] = other.last_moves_[i];
 
     return *this;
   }
@@ -132,7 +137,10 @@ class PositionHistory {
   const Position& Last() const { return positions_.back(); }
 
   // Returns the last made move, but return nullptr if no moves were made yet.
-  const Move LastMove() const { return last_move_; }
+  const Move LastMove() const { return last_moves_[0]; }
+
+  // Returns the array of last moves
+  const Move* LastMoves() const { return last_moves_; }
 
   // N-th position of the game, 0-based.
   const Position& GetPositionAt(int idx) const { return positions_[idx]; }
@@ -176,7 +184,17 @@ class PositionHistory {
   int ComputeLastMoveRepetitions(int* cycle_length) const;
 
   std::vector<Position> positions_;
-  Move last_move_ = Move();
+
+  // last_moves_: array of 3 last moves
+
+  Move last_moves_[NUM_LAST_MOVES] = {Move(), Move(), Move()};
+
+
+
+
+
+
+
 };
 
 }  // namespace lczero

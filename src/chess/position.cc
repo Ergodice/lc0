@@ -112,7 +112,9 @@ void PositionHistory::Reset(const ChessBoard& board, int rule50_ply,
   positions_.clear();
   positions_.emplace_back(board, rule50_ply, game_ply);
 
-  last_move_ = Move();
+  last_moves_[0] = Move(); 
+  last_moves_[1] = Move();
+  last_moves_[2] = Move();
 }
 
 void PositionHistory::Append(Move m) {
@@ -124,7 +126,10 @@ void PositionHistory::Append(Move m) {
   int repetitions = ComputeLastMoveRepetitions(&cycle_length);
   positions_.back().SetRepetitions(repetitions, cycle_length);
 
-  last_move_ = m;
+  // update last_moves_  array
+  last_moves_[2] = last_moves_[1];
+  last_moves_[1] = last_moves_[0];
+  last_moves_[0] = m;
 }
 
 int PositionHistory::ComputeLastMoveRepetitions(int* cycle_length) const {
@@ -169,24 +174,27 @@ uint64_t PositionHistory::HashLast(int positions, int r50_ply) const {
 
 uint64_t PositionHistory::CHHash() const { 
   Position last = Last();
-  const Move last_move = LastMove();
+  const Move* last_moves = LastMoves();
+  const Move last_move = last_moves[0];
   uint64_t position_hash = last.CHHash();
-  if (last_move) {
-		position_hash = HashCat(position_hash, last_move.Hash());
-    char moved_piece = GetPieceAt(last.GetBoard(), last_move.to().row(),
-                                              last_move.to().col());
-    position_hash = HashCat(position_hash, moved_piece);
 
-    // we add whether it was a capture and what it captured if so
-    // if a piece was not capture then GetPieceAt returns "\0"
-    // if a piece was not captured then GetPieceAt returns "\0"
-    if (positions_.size() > 1) {
-      char captured_piece =
-          GetPieceAt(positions_[positions_.size() - 2].GetBoard(),
-                     last_move.to().row(), last_move.to().col());
-      position_hash = HashCat(position_hash, captured_piece);
-		}
-	}
+
+	position_hash = HashCat(position_hash, last_move.Hash());
+  char moved_piece = GetPieceAt(last.GetBoard(), last_move.to().row(),
+                                            last_move.to().col());
+  position_hash = HashCat(position_hash, moved_piece);
+
+  // we add whether it was a capture and what it captured if so
+  // if a piece was not capture then GetPieceAt returns "\0"
+  // if a piece was not captured then GetPieceAt returns "\0"
+  if (positions_.size() > 1) {
+    char captured_piece =
+        GetPieceAt(positions_[positions_.size() - 2].GetBoard(), 
+                    last_move.to().row(), last_move.to().col());
+    position_hash = HashCat(position_hash, captured_piece);
+	} 
+
+  position_hash = HashCat(position_hash, last_moves[1].Hash());
 
   return position_hash;
 }
