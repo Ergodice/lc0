@@ -376,6 +376,7 @@ void LowNode::FinalizeScoreUpdate(float v, float d, float m, float vs,
   assert(edges_);
 
 
+  if (weight_ == 0) init_weight_ = multiweight;
     
   if (cht_entry_ != nullptr) {
     cht_entry_->weightSum += multiweight;
@@ -414,9 +415,17 @@ void LowNode::AdjustForTerminal(float v, float d, float m, float vs,
   m_ += multiweight * m / weight_;
   vs_ += multiweight * vs / weight_;
 
-  if (cht_entry_ != nullptr ) {cht_entry_->deltaSum -= multiweight * v;
+  if (cht_entry_ != nullptr ) {
+    cht_entry_->deltaSum -= multiweight * v;
+    if (cht_entry_->weightSum > 0) {
+      float ch_delta = cht_entry_->deltaSum / cht_entry_->weightSum;
+      wl_ += (ch_delta - ch_delta_) * multiweight / weight_;
+      ch_delta_ = ch_delta;
+    }
   }
 
+
+  wl_ = std::clamp(wl_, -1.0, 1.0);
 
 
   assert(WLDMInvariantsHold());

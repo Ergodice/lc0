@@ -721,6 +721,8 @@ class LowNode {
 
   float ch_delta_ = 0.0f;
 
+  float init_weight_ = 0.0f;
+
 
   // How many completed visits this node had.
   uint32_t n_ = 0;
