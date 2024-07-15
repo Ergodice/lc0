@@ -594,7 +594,13 @@ class LowNode {
   uint64_t GetCHHash() const { return ch_hash_; }
   CorrHistEntry* GetCHTEntry() const { return cht_entry_; }
 
-  void SetCHTEntry(CorrHistEntry* cht_entry) { cht_entry_ = cht_entry; }
+  void SetCHTEntry(CorrHistEntry* cht_entry) { 
+    
+    cht_entry_ = cht_entry; 
+    ch_delta_ = (cht_entry != nullptr || cht_entry->weightSum == 0) ? 0
+                    : cht_entry->deltaSum / cht_entry->weightSum;
+  
+  }
 
 
 
@@ -627,7 +633,8 @@ class LowNode {
 
   // Like FinalizeScoreUpdate, but it updates n existing visits by delta amount.
   void AdjustForTerminal(float v, float d, float m, float vs,
-                         uint32_t multivisit, float multiweight);
+                         uint32_t multivisit, float multiweight,
+                         float ch_lambda);
 
   // Deletes all children.
   void ReleaseChildren(GCQueue* gc_queue);

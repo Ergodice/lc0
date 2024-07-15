@@ -2587,7 +2587,7 @@ void SearchWorker::DoBackupUpdateSingleNode(
         node_to_process.multivisit * avg_weight);
     if (n_to_fix > 0) {
       pl->AdjustForTerminal(v_delta, d_delta, m_delta, vs_delta, n_to_fix,
-                            weight_to_fix);
+                            weight_to_fix, ch_lambda);
     }
 
     

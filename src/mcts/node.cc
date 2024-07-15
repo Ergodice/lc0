@@ -404,7 +404,8 @@ void LowNode::FinalizeScoreUpdate(float v, float d, float m, float vs,
 
 
 void LowNode::AdjustForTerminal(float v, float d, float m, float vs,
-                                uint32_t multivisit, float multiweight) {
+                                uint32_t multivisit, float multiweight,
+                                float ch_lambda) {
   assert(static_cast<uint32_t>(multivisit) <= n_);
 
 
@@ -419,7 +420,7 @@ void LowNode::AdjustForTerminal(float v, float d, float m, float vs,
     cht_entry_->deltaSum -= multiweight * v;
     if (cht_entry_->weightSum > 0) {
       float ch_delta = cht_entry_->deltaSum / cht_entry_->weightSum;
-      wl_ += (ch_delta - ch_delta_) * multiweight / weight_;
+      wl_ -= ch_lambda * (ch_delta - ch_delta_) * init_weight_ / weight_;
       ch_delta_ = ch_delta;
     }
   }
