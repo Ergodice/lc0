@@ -700,7 +700,8 @@ std::vector<std::string> Search::GetVerboseStats(Node* node) const {
 
   oss << std::endl << "Low nodes: " << total_low_nodes_
        << " NN queries: " << total_nn_queries_
-       << " Playouts: " << total_playouts_ + initial_visits_ << std::endl;
+      << " Playouts: " << total_playouts_ + initial_visits_
+      << " Confident value playouts: " << confident_value_playouts_ << std::endl;
 
 	print(&oss, "(U coeff: ", U_coeff, ") ", 15, 2);
 
@@ -1947,7 +1948,6 @@ void SearchWorker::PickNodesToExtendTask(
                 p = std::max(p, policy_boost_t2);
               }
             }
-
             
             current_score[idx] =
               p * puct_mult / (1 + weightstarted) + util;
@@ -2451,6 +2451,8 @@ void SearchWorker::DoBackupUpdateSingleNode(
   float d_delta = 0.0f;
   float m_delta = 0.0f;
   float vs_delta = 0.0f;
+  bool confident_value = false;
+
 
   bool use_correction_history = params_.GetUseCorrectionHistory();
 
@@ -2479,7 +2481,15 @@ void SearchWorker::DoBackupUpdateSingleNode(
   float avg_weight;
   if (nl) {
     avg_weight = ComputeWeight(params_, nl->GetE());
+
     n->SetE(nl->GetE());
+    float wl = nl->GetWL();
+    float d = nl->GetD();
+    // if the net is confident in its wld we can increase the weight
+    if (d > 0.85 || std::abs(wl) > 0.85) {
+      avg_weight *= 2;
+      confident_value = true;
+    }
 		
   } else {
 		// game is over so uncertainty is highest possible
@@ -2498,6 +2508,8 @@ void SearchWorker::DoBackupUpdateSingleNode(
 
 	
   if (nl && nl->GetN() == 0) {
+
+
 
     float wl_corrected = nl->GetWL();
     if (use_correction_history && !nl->IsTwin() && !nl->IsTerminal()) {
@@ -2632,6 +2644,8 @@ void SearchWorker::DoBackupUpdateSingleNode(
     nm = pm;
   }
   search_->total_playouts_ += node_to_process.multivisit;
+  search_->confident_value_playouts_ +=
+      confident_value ? node_to_process.multivisit : 0;
   search_->cum_depth_ +=
       node_to_process.path.size() * node_to_process.multivisit;
   search_->max_depth_ =

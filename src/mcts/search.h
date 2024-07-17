@@ -190,6 +190,8 @@ class Search {
   int64_t total_low_nodes_ GUARDED_BY(nodes_mutex_) = 0;
   int64_t total_nn_queries_ GUARDED_BY(nodes_mutex_) = 0;
   int64_t total_batches_ GUARDED_BY(nodes_mutex_) = 0;
+  int64_t confident_value_playouts_ GUARDED_BY(nodes_mutex_) = 0;
+
   // Maximum search depth = length of longest path taken in PickNodetoExtend.
   uint16_t max_depth_ GUARDED_BY(nodes_mutex_) = 0;
   // Cumulative depth of all paths taken in PickNodetoExtend.
