@@ -2486,8 +2486,8 @@ void SearchWorker::DoBackupUpdateSingleNode(
     float wl = nl->GetWL();
     float d = nl->GetD();
     // if the net is confident in its wld we can increase the weight
-    if (d > 0.85 || std::abs(wl) > 0.85) {
-      avg_weight *= 2;
+    if (std::abs(wl) > 0.85) {
+      avg_weight *= 1.5;
       confident_value = true;
     }
 		
