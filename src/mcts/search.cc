@@ -1911,6 +1911,12 @@ void SearchWorker::PickNodesToExtendTask(
 			const float puct_mult =
           ComputeExploreFactor(params_, node->GetWeight(), node->GetWL(),
                                node->GetVS(), node->GetE(), is_root_node);
+      if (node->GetWL() > node->GetV()) {
+        puct_mult *= 0.8;
+      }
+      else {
+        puct_mult *= 1.2;
+      }
       int cache_filled_idx = -1;
       while (cur_limit > 0) {
         // Perform UCT for current node.
