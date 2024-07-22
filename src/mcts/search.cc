@@ -1908,7 +1908,7 @@ void SearchWorker::PickNodesToExtendTask(
       }
 
 
-			const float puct_mult =
+			float puct_mult =
           ComputeExploreFactor(params_, node->GetWeight(), node->GetWL(),
                                node->GetVS(), node->GetE(), is_root_node);
       if (node->GetWL() > node->GetV()) {
