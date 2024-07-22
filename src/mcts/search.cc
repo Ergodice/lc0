@@ -1757,6 +1757,10 @@ void SearchWorker::PickNodesToExtendTask(
   
   constexpr int num_top = 8;
   std::array<float, num_top> top_utils;
+  float top_weight;
+
+  bool last_not_best = false;
+  bool last_last_not_best = false;
 
   auto& cur_iters = workspace->cur_iters;
 
@@ -1877,6 +1881,8 @@ void SearchWorker::PickNodesToExtendTask(
             break;
           }
         }
+
+        top_weight = fmax(child->GetWeight(), top_weight);
       }
 
 
@@ -1908,9 +1914,15 @@ void SearchWorker::PickNodesToExtendTask(
       }
 
 
-			const float puct_mult =
+			float puct_mult =
           ComputeExploreFactor(params_, node->GetWeight(), node->GetWL(),
                                node->GetVS(), node->GetE(), is_root_node);
+
+      if (last_last_not_best) {
+        puct_mult *= 1.0 + (.5 * node->GetWeight() / (50 + node->GetWeight()) );
+                        
+      }
+
       int cache_filled_idx = -1;
       while (cur_limit > 0) {
         // Perform UCT for current node.
@@ -2017,6 +2029,9 @@ void SearchWorker::PickNodesToExtendTask(
         }
         (*visits_to_perform.back())[best_idx] += new_visits;
         cur_limit -= new_visits;
+
+        last_last_not_best = last_not_best;
+        last_not_best = best_edge.GetWeight() < top_weight;
 
         Node* child_node = best_edge.GetOrSpawnNode(/* parent */ node);
         history.Append(best_edge.GetMove());
