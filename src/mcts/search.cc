@@ -452,7 +452,7 @@ inline float ComputeUncertaintyFactor(const SearchParams& params, float e) {
   float max_factor = params.GetCpuctUncertaintyMaxFactor();
   float min_uncertainty = params.GetCpuctUncertaintyMinUncertainty();
   float max_uncertainty = params.GetCpuctUncertaintyMaxUncertainty();
-  e = std::clamp(e * e, min_uncertainty, max_uncertainty);
+  e = std::clamp(e, min_uncertainty, max_uncertainty);
   float factor = min_factor + (max_factor - min_factor) * (e - min_uncertainty) /
                                   (max_uncertainty - min_uncertainty + 1e-5);
   return factor;
