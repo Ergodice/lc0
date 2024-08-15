@@ -1870,9 +1870,12 @@ void SearchWorker::PickNodesToExtendTask(
           (full_path.size() % 2 == 0) ? odd_draw_score : even_draw_score;
       m_evaluator.SetParent(node);
       float visited_pol = 0.0f;
+      float max_p = -1.0f;
       for (Node* child : node->VisitedNodes()) {
         int index = child->Index();
-        visited_pol += child->GetP();
+        float p = child->GetP();
+        max_p = fmax(max_p, p);
+        visited_pol += p;
         float q = child->GetQ(draw_score);
 				
         current_util[index] = q + m_evaluator.GetMUtility(child, q);
@@ -1947,10 +1950,10 @@ void SearchWorker::PickNodesToExtendTask(
             bool check = cur_iters[idx].GetCheck();
 
             // a small hack to reduce policy on bad moves
-            if (p < 0.01f) p /= 3;
+            if (!check && p < 0.01f) p /= 3;
 
             // only boost visited nodes
-						if (visited[idx]) {
+			if (visited[idx]) {
               if (util >= min_policy_boost_util_t1) {
                 p = std::max(p, policy_boost_t1);
               }
@@ -1959,11 +1962,10 @@ void SearchWorker::PickNodesToExtendTask(
               }
             } 
             else {
-              if (check) {
-                p = fmax(p, 0.02);
-
+              if (check && max_p > 0) {
+                p = std::sqrt(p * max_p);
               }
-            }
+            }   
 
             current_score[idx] =
               p * puct_mult / (1 + weightstarted) + util;
