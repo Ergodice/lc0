@@ -226,6 +226,12 @@ struct NNEval {
   uint8_t num_edges = 0;
 };
 
+struct CorrHistEntry {
+  double deltaSum = 0.0;
+  double weightSum = 0.0;
+  int numMembers = 0;
+};
+
 typedef std::pair<GameResult, GameResult> Bounds;
 
 enum class Terminal : uint8_t { NonTerminal, EndOfGame, Tablebase };
@@ -304,6 +310,15 @@ class Node {
   float GetTotalWeight() const { return weight_; }
   float GetAvgWeight() const { return weight_ / n_; }
   float GetE() const { return e_; }
+  // return low node's v
+  float GetV() const;
+  float GetCHDelta() const;
+  uint64_t GetHash() const;
+  uint64_t GetCHHash() const;
+
+  void SetE(float e);
+
+
 
   // Returns whether the node is known to be draw/lose/win.
   bool IsTerminal() const { return terminal_type_ != Terminal::NonTerminal; }
@@ -342,7 +357,6 @@ class Node {
   // incrementing n_in_flight.
   void IncrementNInFlight(uint32_t multivisit);
 
-	void SetE(float e);
 
   // Returns range for iterating over edges.
   ConstIterator Edges() const;
@@ -395,7 +409,6 @@ class Node {
   void SetRepetition() { repetition_ = true; }
   bool IsRepetition() const { return repetition_; }
 
-  uint64_t GetHash() const;
   bool IsTT() const;
 
   bool WLDMInvariantsHold() const;
@@ -420,6 +433,7 @@ class Node {
   // Averaged draw probability. Works similarly to WL, except that D is not
   // flipped depending on the side to move.
   double d_ = 0.0f;
+
 
   // 8 byte fields on 64-bit platforms, 4 byte on 32-bit.
   // Pointer to the low node.
@@ -458,6 +472,7 @@ class Node {
   GameResult upper_bound_ : 2;
   // Edge was handled as a repetition at some point.
   bool repetition_ : 1;
+
 };
 
 // Check that Node still fits into an expected cache line size.
@@ -479,6 +494,7 @@ class LowNode {
       : wl_(p.wl_),
         v_(p.v_),
         hash_(p.hash_),
+        ch_hash_(p.ch_hash_),
         d_(p.d_),
         m_(p.m_),
         vs_(p.vs_),
@@ -494,10 +510,12 @@ class LowNode {
     std::memcpy(edges_.get(), p.edges_.get(), num_edges_ * sizeof(Edge));
   }
 
+  // Only used when creating twin low nodes
   LowNode(const LowNode& p, const uint64_t hash)
       : wl_(p.wl_),
         v_(p.v_),
         hash_(hash),
+        ch_hash_(p.ch_hash_),
         d_(p.d_),
         m_(p.m_),
         vs_(p.vs_),
@@ -549,11 +567,15 @@ class LowNode {
     num_edges_ = eval->num_edges;
   }
 
+  void SetCHHash(uint64_t ch_hash) { ch_hash_ = ch_hash; }
+
   // Gets the first child.
   atomic_unique_ptr<Node>* GetChild() { return &child_; }
 
   // Returns whether a node has children.
   bool HasChildren() const { return num_edges_ > 0; }
+
+  bool IsTwin() const { return is_twin_; }
 
   uint32_t GetN() const { return n_; }
   uint32_t GetChildrenVisits() const { return n_ - 1; }
@@ -567,6 +589,16 @@ class LowNode {
   float GetVS() const { return vs_; }
   float GetWeight() const { return weight_; }
   float GetE() const { return e_; }
+  float GetCHDelta() const { return ch_delta_; }
+
+
+  uint64_t GetHash() const { return hash_; }
+  uint64_t GetCHHash() const { return ch_hash_; }
+  CorrHistEntry* GetCHTEntry() const { return cht_entry_; }
+
+  void SetCHTEntry(CorrHistEntry* cht_entry) { cht_entry_ = cht_entry; }
+
+
 
   // Returns whether the node is known to be draw/loss/win.
   bool IsTerminal() const { return terminal_type_ != Terminal::NonTerminal; }
@@ -594,6 +626,7 @@ class LowNode {
   // * N-in-flight (-=multivisit)
   void FinalizeScoreUpdate(float v, float d, float m, float vs,
                            uint32_t multivisit, float multiweight);
+
   // Like FinalizeScoreUpdate, but it updates n existing visits by delta amount.
   void AdjustForTerminal(float v, float d, float m, float vs,
                          uint32_t multivisit, float multiweight);
@@ -636,9 +669,10 @@ class LowNode {
   uint16_t GetNumParents() const { return num_parents_; }
   bool IsTransposition() const { return is_transposition; }
 
-  uint64_t GetHash() const { return hash_; }
   bool IsTT() const { return is_tt_; }
   void ClearTT() { is_tt_ = !is_tt_; }
+
+  void MakeTwin() { is_twin_ = true; }
 
   bool WLDMInvariantsHold() const;
 
@@ -662,11 +696,15 @@ class LowNode {
   // Averaged draw probability. Works similarly to WL, except that D is not
   // flipped depending on the side to move.
   double d_ = 0.0f;
-	
-	
 
   // Position hash and a TT key.
   uint64_t hash_ = 0;
+
+  uint64_t ch_hash_ = 0;
+
+  CorrHistEntry* cht_entry_ = nullptr;
+
+
 
   // 8 byte fields on 64-bit platforms, 4 byte on 32-bit.
   // Array of edges.
@@ -682,6 +720,9 @@ class LowNode {
   float v_ = 0.0f;
 
 	float e_ = 0.0f;
+
+  float ch_delta_ = 0.0f;
+
 
   // How many completed visits this node had.
   uint32_t n_ = 0;
@@ -703,6 +744,9 @@ class LowNode {
   bool is_transposition : 1;
   // Low node is in TT, i.e. was not evaluated or was modified.
   bool is_tt_ : 1;
+
+  // if the node was created as a twin it shouldn't be used for correction history
+  bool is_twin_ = false;
 };
 
 // Check that LowNode still fits into an expected cache line size.
@@ -1001,6 +1045,10 @@ class NodeTree {
   typedef absl::flat_hash_map<uint64_t, std::unique_ptr<LowNode>>
       TranspositionTable;
 
+  // Correction History Table (CHT) for correctio neural net biases, similar to Katago
+  typedef absl::flat_hash_map<uint64_t, std::unique_ptr<CorrHistEntry>>
+      CorrHistTable;
+
   // Apply search params.
   NodeTree(const SearchParams& params)
       : hash_history_length_(params.GetCacheHistoryLength() + 1) {}
@@ -1035,7 +1083,8 @@ class NodeTree {
   // already. Return the low node for the hash.
   std::pair<LowNode*, bool> TTGetOrCreate(uint64_t hash);
 
-
+  CorrHistEntry* CHTGetOrCreate(uint64_t hash);
+   
   std::pair<LowNode*, bool> TTGetOrCreate(const LowNode& p, uint64_t hash);
 
   // Evict unused low nodes from the Transposition Table.
@@ -1058,6 +1107,12 @@ class NodeTree {
                           int r50_ply = -1) const {
     return history.HashLast(hash_history_length_, r50_ply);
   }
+  uint64_t GetCHHash(const PositionHistory& history) const {
+    return history.CHHash();
+  }
+
+  
+
 
  private:
   void DeallocateTree();
@@ -1075,6 +1130,8 @@ class NodeTree {
   // Transposition Table (TT) for holding references to all normal low nodes in
   // the DAG.
   TranspositionTable tt_;
+
+  CorrHistTable cht_;
   // Collection of low nodes that are not fit for Transposition Table due to
   // noise or incomplete information.
   std::vector<std::unique_ptr<LowNode>> non_tt_;

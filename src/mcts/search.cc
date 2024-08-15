@@ -632,6 +632,23 @@ std::vector<std::string> Search::GetVerboseStats(Node* node) const {
             ") ", 6, 5);
       print(oss, "(VS: ", n->GetVS(), ") ", 6, 5);
       print(oss, "(E: ", n->GetE(), ") ", 6, 5);
+      LowNode* low_node = n->GetLowNode();
+      if (low_node != nullptr) {
+        CorrHistEntry* cht_entry = dag_->CHTGetOrCreate(low_node->GetCHHash());
+
+        print(oss, "(CHW: ", cht_entry->weightSum, ") ", 6, 5);
+        print(oss,
+              "(CHD: ", -sign * cht_entry->deltaSum / (cht_entry->weightSum + 0.0001f),
+              ") ", 6, 5);
+        print(oss, "(CHN: ", cht_entry->numMembers, ") ", 6);
+
+
+
+      }
+      print(oss, "(V: ", sign * n->GetV(), ") ", 6, 5);
+
+
+
     } else {
       *oss << "(WL:  -.-----) (D: -.---) (M:  -.-) ";
     }
@@ -639,22 +656,6 @@ std::vector<std::string> Search::GetVerboseStats(Node* node) const {
   };
   auto print_tail = [&](auto* oss, const auto* n) {
     const auto sign = n == node ? -1 : 1;
-    std::optional<float> v;
-    if (n && n->IsTerminal()) {
-      v = n->GetQ(sign * draw_score);
-    } else if (n) {
-      auto history = played_history_;
-      if (!is_root) {
-        history.Append(node->GetMove());
-      }
-      NNCacheLock nneval = GetCachedNNEval(history);
-      if (nneval) v = -nneval->eval->q;
-    }
-    if (v) {
-      print(oss, "(V: ", sign * *v, ") ", 7, 4);
-    } else {
-      *oss << "(V:  -.----) ";
-    }
 
     if (n) {
       auto [lo, up] = n->GetBounds();
@@ -1954,6 +1955,9 @@ void SearchWorker::PickNodesToExtendTask(
             float p = cur_iters[idx].GetP();
             bool check = cur_iters[idx].GetCheck();
 
+            // a small hack to reduce policy on bad moves
+            if (p < 0.01f) p /= 3;
+
             // only boost visited nodes
 						if (visited[idx]) {
               if (util >= min_policy_boost_util_t1) {
@@ -2240,6 +2244,8 @@ void SearchWorker::ExtendNode(NodeToProcess& picked_node) {
   // Check the transposition table first and NN cache second before asking for
   // NN evaluation.
   picked_node.hash = search_->dag_->GetHistoryHash(history);
+  picked_node.ch_hash = search_->dag_->GetCHHash(history);
+
   auto tt_low_node = search_->dag_->TTFind(picked_node.hash);
   if (tt_low_node != nullptr) {
     picked_node.tt_low_node = tt_low_node;
@@ -2251,6 +2257,7 @@ void SearchWorker::ExtendNode(NodeToProcess& picked_node) {
 
       if (my_ply <= 64) {
         bs = 32;
+
       } else if (my_ply <= 80) {
         bs = 16;
       } else if (my_ply <= 92) {
@@ -2330,7 +2337,9 @@ void SearchWorker::FetchSingleNodeResult(NodeToProcess* node_to_process,
       auto [tt_low_node, is_tt_miss] =
           search_->dag_->TTGetOrCreate(twin_low_node, node_to_process->hash);
       assert(tt_low_node != nullptr);
+      tt_low_node->MakeTwin();
       node_to_process->tt_low_node = tt_low_node;
+      
     } else {
       auto [tt_low_node, is_tt_miss] =
           search_->dag_->TTGetOrCreate(node_to_process->hash);
@@ -2358,6 +2367,9 @@ void SearchWorker::FetchSingleNodeResult(NodeToProcess* node_to_process,
           nn_eval->d = d;
         }
         node_to_process->tt_low_node->SetNNEval(nn_eval);
+        node_to_process->tt_low_node->SetCHHash(node_to_process->ch_hash);
+
+
       }
     }
   }
@@ -2480,6 +2492,28 @@ void SearchWorker::DoBackupUpdateSingleNode(
   float m_delta = 0.0f;
   float vs_delta = 0.0f;
 
+  bool use_correction_history = params_.GetUseCorrectionHistory();
+
+  float ch_delta;
+  CorrHistEntry* ntp_cht_entry;
+
+  if (use_correction_history) {
+    ntp_cht_entry =
+        search_->dag_->CHTGetOrCreate(node_to_process.ch_hash);
+    ch_delta = ntp_cht_entry->weightSum == 0
+                   ? 0
+                   : ntp_cht_entry->deltaSum / ntp_cht_entry->weightSum;
+  }
+  else {
+    ch_delta = 0;
+    ntp_cht_entry = nullptr;
+  }
+  float ch_lambda = params_.GetCorrectionHistoryLambda();
+  float ch_alpha = params_.GetCorrectionHistoryAlpha();
+
+
+
+
   // Update the low node at the start of the backup path first, but only visit
   // it the first time that backup sees it.
   float avg_weight;
@@ -2501,12 +2535,27 @@ void SearchWorker::DoBackupUpdateSingleNode(
   if (!node_to_process.ShouldAddToInput()) {
     avg_weight *= params_.GetEasyEvalWeightDecay();
   }
+
 	
   if (nl && nl->GetN() == 0) {
+
+    float wl_corrected = nl->GetWL();
+    if (use_correction_history && !nl->IsTwin() && !nl->IsTerminal()) {
+      wl_corrected -= ch_lambda * ch_delta;
+      wl_corrected = std::clamp(wl_corrected, -1.0f, 1.0f);
+    }
+
     nl->FinalizeScoreUpdate(
-        nl->GetWL(), nl->GetD(), nl->GetM(), nl->GetVS(),
+       wl_corrected, nl->GetD(), nl->GetM(), nl->GetVS(),
         node_to_process.multivisit,
         node_to_process.multivisit * avg_weight);
+
+        // for testing cht is per node
+    if (ntp_cht_entry != nullptr && !nl->IsTwin()) {
+      nl->SetCHTEntry(ntp_cht_entry);
+      ntp_cht_entry->numMembers++;
+    }
+
   }
 
   if (nr >= 2) {
@@ -2557,13 +2606,17 @@ void SearchWorker::DoBackupUpdateSingleNode(
     // Nothing left to do without ancestors to update.
     if (++it == path.crend()) break;
     auto [p, pr, pm] = *it;
-    auto pl = p->GetLowNode();
+    LowNode* pl = p->GetLowNode();
 
     assert(!p->IsTerminal() ||
            (p->IsTerminal() && pl->IsTerminal() && p->GetWL() == -pl->GetWL() &&
             p->GetD() == pl->GetD()));
     // If parent low node is already a (new) terminal, then change propagated
     // values and stop terminal adjustment.
+
+
+
+
     if (pl->IsTerminal()) {
       v = pl->GetWL();
       d = pl->GetD();
@@ -2579,6 +2632,8 @@ void SearchWorker::DoBackupUpdateSingleNode(
       pl->AdjustForTerminal(v_delta, d_delta, m_delta, vs_delta, n_to_fix,
                             weight_to_fix);
     }
+
+    
 
     bool old_update_parent_bounds = update_parent_bounds;
     // Try setting parent bounds except the root or those already terminal.

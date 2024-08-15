@@ -259,6 +259,8 @@ class Move {
   // 0 .. 16384, knight promotion and no promotion is the same.
   uint16_t as_packed_int() const;
 
+  uint64_t Hash() const { return as_packed_int(); }
+
   // 0 .. 1857, to use in neural networks.
   // Transform is a bit field which describes a transform to be applied to the
   // the move before converting it to an index.

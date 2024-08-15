@@ -42,6 +42,9 @@ class Position {
   Position(const ChessBoard& board, int rule50_ply, int game_ply);
 
   uint64_t Hash() const;
+  uint64_t CHHash() const;
+
+
   bool IsBlackToMove() const { return us_board_.flipped(); }
 
   // Number of half-moves since beginning of the game.
@@ -104,6 +107,8 @@ class PositionHistory {
     positions_.reserve(
         std::max(other.positions_.size() + 1, other.positions_.capacity()));
     positions_ = other.positions_;
+    last_move_ = other.last_move_;
+
   }
   PositionHistory(PositionHistory&& other) = default;
 
@@ -113,6 +118,9 @@ class PositionHistory {
     positions_.reserve(
         std::max(other.positions_.size() + 1, other.positions_.capacity()));
     positions_ = other.positions_;
+
+    last_move_ = other.last_move_;
+
     return *this;
   }
   PositionHistory& operator=(PositionHistory&& other) = default;
@@ -122,6 +130,9 @@ class PositionHistory {
 
   // Returns the latest position of the game.
   const Position& Last() const { return positions_.back(); }
+
+  // Returns the last made move, but return nullptr if no moves were made yet.
+  const Move LastMove() const { return last_move_; }
 
   // N-th position of the game, 0-based.
   const Position& GetPositionAt(int idx) const { return positions_[idx]; }
@@ -156,6 +167,8 @@ class PositionHistory {
   // Builds a hash from last X positions.
   uint64_t HashLast(int positions, int r50_ply = -1) const;
 
+  uint64_t CHHash() const;
+
   // Checks for any repetitions since the last time 50 move rule was reset.
   bool DidRepeatSinceLastZeroingMove() const;
 
@@ -163,6 +176,7 @@ class PositionHistory {
   int ComputeLastMoveRepetitions(int* cycle_length) const;
 
   std::vector<Position> positions_;
+  Move last_move_ = Move();
 };
 
 }  // namespace lczero

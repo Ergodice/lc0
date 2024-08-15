@@ -33,7 +33,18 @@
 #include "chess/bitboard.h"
 #include "utils/hashcat.h"
 
+//using count_bits = __builtin_popcountll;
+
 namespace lczero {
+
+inline uint64_t count_bits(uint64_t x) {
+  int count;
+  for (count = 0; x != 0; ++count) {
+    // Clear the rightmost set bit.
+    x &= x - 1;
+  }
+  return count;
+}
 
 // Initializes internal magic bitboard structures.
 void InitializeMagicBitboards();
@@ -114,6 +125,31 @@ class ChessBoard {
                         (static_cast<uint32_t>(their_king_.as_int()) << 16) |
                         (static_cast<uint32_t>(castlings_.as_int()) << 8) |
                         static_cast<uint32_t>(flipped_)});
+  }
+
+  // A hash for correction history, uses pawn structure (both our and opponents' pawns).
+  // and then uses piece count of rooks, knights, bishops, and queen for both sides
+  uint64_t CHHash() const {
+    return HashCat({
+      our_pieces_.as_int() & pawns_.as_int(),
+        their_pieces_.as_int() & pawns_.as_int(),
+        our_king_.as_int(), their_king_.as_int(),
+
+        // below would count the number of each piece type on both sides
+
+        count_bits(rooks().as_int() & our_pieces_.as_int()),
+        count_bits(rooks().as_int() & their_pieces_.as_int()),
+        count_bits(bishops().as_int() & our_pieces_.as_int()),  
+        count_bits(bishops().as_int() & their_pieces_.as_int()),
+        count_bits(knights().as_int() & our_pieces_.as_int()),
+        count_bits(knights().as_int() & their_pieces_.as_int()),
+        count_bits(queens().as_int() & our_pieces_.as_int()),
+        count_bits(  queens().as_int() & their_pieces_.as_int()),
+
+
+
+    });
+
   }
 
   class Castlings {

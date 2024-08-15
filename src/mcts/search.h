@@ -328,6 +328,7 @@ class SearchWorker {
 
     // Details that are filled in as we go.
     uint64_t hash;
+    uint64_t ch_hash;
 
     LowNode* tt_low_node;
     LowNode* twin_low_node;

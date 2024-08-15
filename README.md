@@ -15,23 +15,7 @@ Add a file titled lc0.config with the following parameters:
 
 ```
 --weights=...
-
---uncertainty-weighting-cap=1.03
---uncertainty-weighting-coefficient=0.13
---uncertainty-weighting-exponent=-1.76
---use-uncertainty-weighting=true
-
---reported-nodes=legacy
 --backend-opts=policy_head=vanilla,value_head=winner
-
---top-policy-num-boost=3
---top-policy-boost=0.05
-
---policy-softmax-temp=1.4
---fpu-value=0.984160
---cpuct-exponent=0.6
---cpuct=2.897
---cpuct-factor=0
 ```
 
 The weights argument should be the path to your network of choice.
@@ -57,8 +41,8 @@ and set the `CUTLASS_INCLUDE_PATH` in `build.cmd` to the include directory. Also
 When a position seems to be very drawish/winnish, search can be widened by increasing CPUCT. 
 If the absolute value of the position's q value is at most `desperation-low` or at least
 `desperation-high` the CPUCT valued is increased by a factor of `desperation-multiplier`. 
-The prior weight is the weight at which the effect is a half of its max value. Recommended settings below.
-Disabled by default.
+The prior weight is the weight at which the effect is a half of its max value. This setting is NOT RECOMMENDED, 
+but the following settings can be used for testing.
 
 ```
 --desperation-multiplier=1.5
@@ -80,16 +64,14 @@ r3kb1r/1b3ppp/p2p1n2/3Pn3/Pq1N4/1B6/1P3PPP/R1BQR1K1 w kq - 1 3
 with resp. best moves `Bg2` and `h3` have a strong move practically ignored because it has low policy.
 This feature sets a lowest baseline policy for the top few moves so that this doesn't happen.
 The top `top-policy-num-boost` are treated as if they had policy at least `top-policy-boost`. 
-There is also a "tier two" for moves that are still ranked highly but not in the top few.
+There is also a "tier two" for moves that are still ranked highly but not in the top few. Removing regressed by a couple elo at LTC.
 
 Recommended settings below.
-Disabled by default.
+Enabled by default.
 
 ```
 --top-policy-num-boost=3
 --top-policy-boost=0.05
---top-policy-tier-two-num-boost=6
---top-policy-tier-two-boost=0.025
 --use-policy-boosting=true
 ```
 
@@ -137,7 +119,7 @@ Identical to the [Katago implementation](https://github.com/lightvector/KataGo/b
 ```
 
 
-You must set `--use-uncertainty-weighting=true` to turn it on. With BT3, the gain was 20 elo at LTC with
+Enabled by default. With BT3, the gain was 20 elo at LTC with
 
 ```
 --uncertainty-weighting-cap=1.03
@@ -146,10 +128,37 @@ You must set `--use-uncertainty-weighting=true` to turn it on. With BT3, the gai
 --use-uncertainty-weighting=true
 ```
 
+### CPUCT Uncertainty
+
+Katago [found that](https://github.com/lightvector/KataGo/blob/master/docs/KataGoMethods.md#dynamic-variance-scaled-cpuct) scaling CPUCT to match the variance of rewards gains elo.
+We didn't find elo from that approach but did find that varying CPUCT based on the uncertainty of the position improved performance. The new parameters are
+
+```
+--use-cpuct-uncertainty=true
+--cpuct-uncertainty-max-uncertainty=0.347
+--cpuct-uncertainty-min-uncertainty=0.0
+--cpuct-uncertainty-min-factor=0.87
+--cpuct-uncertainty-max-factor=1.78
+```
+
+This was found to gain [8 elo at LTC](https://bench.plutie.ca/test/134/). 
 
 
+### Correction history
+Identical to the [Katago implementation](https://github.com/lightvector/KataGo/blob/master/docs/KataGoMethods.md#subtree-value-bias-correction). To form our buckets, we use the position of all pawns and kings, the number of each piece type, the last moved piece and its pick-up and put-down squares, and what piece was captured iwth that move if it was a capture.
+
+The new parameters are
+
+```
+--use-correction-history=true
+--correction-history-lambda=0.3
+```
+
+The gain was [8 elo at LTC](https://bench.plutie.ca/test/70/).
 
 ### CPUCT Utility Variance Scaling
+
+THIS HAS BEEN REPLACED BY A CPUCT UNCERTAINTY FEATURE, DO NOT USE.
 
 Identical to the [Katago implementation](https://github.com/lightvector/KataGo/blob/master/docs/KataGoMethods.md#dynamic-variance-scaled-cpuct). The new parameters are
 
@@ -160,7 +169,7 @@ Identical to the [Katago implementation](https://github.com/lightvector/KataGo/b
 --use-variance-scaling
 ```
 
-and the tuned values (excluding the prior weight) for masterkni's T1 are
+and the tuned values for masterkni's T1 are
 
 ```
 --cpuct=2.3097
@@ -172,7 +181,7 @@ and the tuned values (excluding the prior weight) for masterkni's T1 are
 --use-variance-scaling=true
 ```
 
-You must set `--use-variance-scaling=true` to turn it on. The gain is around 10 elo on STC and 5 elo on LTC, but more testing is needed. For now the setting is NOT RECOMMENDED except for personal use.
+You must set `--use-variance-scaling=true` to turn it on. For now the setting is NOT RECOMMENDED.
 
 
 
