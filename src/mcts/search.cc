@@ -1918,16 +1918,7 @@ void SearchWorker::PickNodesToExtendTask(
         }
       }
 
-			// If the eval at root is positive but at the current node is negative,
-      // greatly increase first play urgency
-			float fpu_boost = 1;
-      if (root_eval > 0 && -node->GetWL() < 0) {
-        fpu_boost = params_.GetFpuBoost();
-      }
-
-
-
-			const float puct_mult =
+	  const float puct_mult =
           ComputeExploreFactor(params_, node->GetWeight(), node->GetWL(),
                                node->GetVS(), node->GetE(), is_root_node);
       int cache_filled_idx = -1;
@@ -1966,21 +1957,10 @@ void SearchWorker::PickNodesToExtendTask(
               if (util >= min_policy_boost_util_t2) {
                 p = std::max(p, policy_boost_t2);
               }
-
-							// if move has extremely bad eval then reduce exploration
-							if (params_.GetUseDisgust()) {
-                if (util <= -0.98) {
-                  p /= 4;
-                } else if (util <= -0.95) {
-                  p /= 2;
-                }
-              }
             } 
             else {
-              p = p * fpu_boost;
               if (check) {
                 p = fmax(p, 0.02);
-                p *= params_.GetCheckFpuBoost();
 
               }
             }
@@ -2308,8 +2288,7 @@ void SearchWorker::CollectCollisions() {
 // ~~~~~~~~~~~~~~~~~~~~~~
 void SearchWorker::RunNNComputation() {
   
-  computation_->ComputeBlocking(params_.GetPolicySoftmaxTemp(), params_.GetLpPruning(),
-    params_.GetUseLpPruning() ? params_.GetLpPruningBound() : 0.0f);
+  computation_->ComputeBlocking(params_.GetPolicySoftmaxTemp());
 }
 
 // 5. Retrieve NN computations (and terminal values) into nodes.
