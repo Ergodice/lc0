@@ -1939,13 +1939,16 @@ void SearchWorker::PickNodesToExtendTask(
             if (p < 0.01f) p /= 3;
 
             // only boost visited nodes
-						if (visited[idx]) {
+			if (visited[idx]) {
               if (util >= min_policy_boost_util_t1) {
                 p = std::max(p, policy_boost_t1);
               }
               if (util >= min_policy_boost_util_t2) {
                 p = std::max(p, policy_boost_t2);
               }
+            }
+            else if (node->GetWL() >= 0.7) {
+                p *= 2.0f;
             }
 
             
