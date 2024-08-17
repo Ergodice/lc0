@@ -552,7 +552,7 @@ inline float ComputeExploreFactor(const SearchParams& params, float weight, bool
   const float k = params.GetCpuctFactor(is_root_node);
   const float base = params.GetCpuctBase(is_root_node);
 
-  return (init * (1.0 + 0.7 * weight / (weight + 256) ) + (k ? k * FastLog((weight + base) / base) : 0.0f)) *
+  return (init * (1.0 + 0.3 * weight / (weight + 256) ) + (k ? k * FastLog((weight + base) / base) : 0.0f)) *
          std::pow(fmax(weight, 1e-5), params.GetCpuctExponent(is_root_node));
 }
 
