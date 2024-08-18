@@ -452,7 +452,7 @@ inline float ComputeUncertaintyFactor(const SearchParams& params, float e) {
   float max_factor = params.GetCpuctUncertaintyMaxFactor();
   float min_uncertainty = params.GetCpuctUncertaintyMinUncertainty();
   float max_uncertainty = params.GetCpuctUncertaintyMaxUncertainty();
-  e = std::clamp(e, min_uncertainty, max_uncertainty);
+  e = std::clamp(e * e, min_uncertainty, max_uncertainty);
   float factor = min_factor + (max_factor - min_factor) * (e - min_uncertainty) /
                                   (max_uncertainty - min_uncertainty + 1e-5);
   return factor;
@@ -1939,13 +1939,16 @@ void SearchWorker::PickNodesToExtendTask(
             if (p < 0.01f) p /= 3;
 
             // only boost visited nodes
-						if (visited[idx]) {
+			if (visited[idx]) {
               if (util >= min_policy_boost_util_t1) {
                 p = std::max(p, policy_boost_t1);
               }
               if (util >= min_policy_boost_util_t2) {
                 p = std::max(p, policy_boost_t2);
               }
+            }
+            else if (node->GetE() > 0.25f) {
+                p *= 1.5;
             }
 
             
