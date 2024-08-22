@@ -549,11 +549,17 @@ inline float GetFpu(const SearchParams& params, Node* node, bool is_root_node,
 
 inline float ComputeExploreFactor(const SearchParams& params, float weight, bool is_root_node) {
   const float init = params.GetCpuct(is_root_node);
+  const float init_2 = params.GetCpuct2(is_root_node);
+  const float cpuct_weight = 256;
   const float k = params.GetCpuctFactor(is_root_node);
   const float base = params.GetCpuctBase(is_root_node);
 
-  return (init * (1.0 + 0.3 * weight / (weight + 256) ) + (k ? k * FastLog((weight + base) / base) : 0.0f)) *
-         std::pow(fmax(weight, 1e-5), params.GetCpuctExponent(is_root_node));
+  const float base_cpuct =
+      (init * cpuct_weight + init_2 * weight) / (cpuct_weight + weight);
+  const float scale_cpuct = (k ? k * FastLog((weight + base) / base) : 0.0f);
+
+  return (base_cpuct + scale_cpuct) *
+         std::pow(fmax(weight, 1e-5), params.GetCpuctExponent(is_root_node) );
 }
 
 inline float ComputeExploreFactor(const SearchParams& params, float weight, float q,
@@ -561,8 +567,7 @@ inline float ComputeExploreFactor(const SearchParams& params, float weight, floa
 	
   const float base_factor = ComputeExploreFactor(params, weight, is_root_node);
 
-  const float extra_factor = ComputeCpuctFactor(params, weight, q, vs, e,
-																					  is_root_node);
+  const float extra_factor = ComputeCpuctFactor(params, weight, q, vs, e, is_root_node);
 
   return base_factor * extra_factor ;
 }

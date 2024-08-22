@@ -56,6 +56,8 @@ class SearchParams {
   // Parameter getters.
   uint32_t GetMiniBatchSize() const { return kMiniBatchSize; }
   float GetCpuct(bool at_root) const { return at_root ? kCpuctAtRoot : kCpuct; }
+  float GetCpuct2(bool at_root) const { return kCpuct2; }
+
   float GetCpuctBase(bool at_root) const {
     return at_root ? kCpuctBaseAtRoot : kCpuctBase;
   }
@@ -231,6 +233,7 @@ class SearchParams {
   // Search parameter IDs.
   static const OptionId kMiniBatchSizeId;
   static const OptionId kCpuctId;
+  static const OptionId kCpuct2Id;
   static const OptionId kCpuctAtRootId;
   static const OptionId kCpuctExponentId;
   static const OptionId kCpuctExponentAtRootId;
@@ -353,6 +356,7 @@ class SearchParams {
   // TODO(crem) Some of those parameters can be converted to be dynamic after
   //            trivial search optimizations.
   const float kCpuct;
+  const float kCpuct2;
   const float kCpuctAtRoot;
   const float kCpuctExponent;
   const float kCpuctExponentAtRoot;

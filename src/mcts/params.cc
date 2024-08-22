@@ -159,6 +159,11 @@ const OptionId SearchParams::kCpuctId{
     "cpuct_init constant from \"UCT search\" algorithm. Higher values promote "
     "more exploration/wider search, lower values promote more "
     "confidence/deeper search."};
+const OptionId SearchParams::kCpuct2Id{
+    "cpuct-2", "CPuct2",
+    "second cpuct constant from \"UCT search\" algorithm. Higher values promote "
+    "more exploration/wider search, lower values promote more "
+    "confidence/deeper search."};
 const OptionId SearchParams::kCpuctAtRootId{
     "cpuct-at-root", "CPuctAtRoot",
     "cpuct_init constant from \"UCT search\" algorithm, for root node."};
@@ -553,7 +558,10 @@ void SearchParams::Populate(OptionsParser* options) {
   // Here the uci optimized defaults" are set.
   // Many of them are overridden with training specific values in tournament.cc.
   options->Add<IntOption>(kMiniBatchSizeId, 1, 1024) = DEFAULT_MINIBATCH_SIZE;
-  options->Add<FloatOption>(kCpuctId, 0.0f, 100.0f) = 1.745f;
+  options->Add<FloatOption>(kCpuctId, 0.0f, 100.0f) = 2.0f;
+  options->Add<FloatOption>(kCpuct2Id, 0.0f, 100.0f) = 3.0f;
+
+
   options->Add<FloatOption>(kCpuctAtRootId, 0.0f, 100.0f) = 1.745f;
 	options->Add<FloatOption>(kCpuctExponentId, 0.0f, 1.0f) = 0.5f;
 	options->Add<FloatOption>(kCpuctExponentAtRootId, 0.0f, 1.0f) = 0.5f;
@@ -577,7 +585,7 @@ void SearchParams::Populate(OptionsParser* options) {
   options->Add<BoolOption>(kLogLiveStatsId) = false;
   std::vector<std::string> fpu_strategy = {"reduction", "absolute"};
   options->Add<ChoiceOption>(kFpuStrategyId, fpu_strategy) = "reduction";
-  options->Add<FloatOption>(kFpuValueId, -100.0f, 100.0f) = 0.330f;
+  options->Add<FloatOption>(kFpuValueId, -100.0f, 100.0f) = 0.670f;
   fpu_strategy.push_back("same");
   options->Add<ChoiceOption>(kFpuStrategyAtRootId, fpu_strategy) = "same";
   options->Add<FloatOption>(kFpuValueAtRootId, -100.0f, 100.0f) = 1.0f;
@@ -722,6 +730,8 @@ void SearchParams::Populate(OptionsParser* options) {
 SearchParams::SearchParams(const OptionsDict& options)
     : options_(options),
       kCpuct(options.Get<float>(kCpuctId)),
+      kCpuct2(options.Get<float>(kCpuct2Id)),
+
       kCpuctAtRoot(options.Get<float>(
           options.Get<bool>(kRootHasOwnCpuctParamsId) ? kCpuctAtRootId
                                                       : kCpuctId)),
