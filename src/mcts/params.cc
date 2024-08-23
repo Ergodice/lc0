@@ -559,7 +559,7 @@ void SearchParams::Populate(OptionsParser* options) {
   // Many of them are overridden with training specific values in tournament.cc.
   options->Add<IntOption>(kMiniBatchSizeId, 1, 1024) = DEFAULT_MINIBATCH_SIZE;
   options->Add<FloatOption>(kCpuctId, 0.0f, 100.0f) = 2.0f;
-  options->Add<FloatOption>(kCpuct2Id, 0.0f, 100.0f) = 3.0f;
+  options->Add<FloatOption>(kCpuct2Id, 0.0f, 100.0f) = 0.5f;
 
 
   options->Add<FloatOption>(kCpuctAtRootId, 0.0f, 100.0f) = 1.745f;

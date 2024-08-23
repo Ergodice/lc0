@@ -555,7 +555,7 @@ inline float ComputeExploreFactor(const SearchParams& params, float weight, bool
   const float base = params.GetCpuctBase(is_root_node);
 
   const float base_cpuct =
-      (init * cpuct_weight + init_2 * weight) / (cpuct_weight + weight);
+      init + init_2 * FastLog(1 + weight);
   const float scale_cpuct = (k ? k * FastLog((weight + base) / base) : 0.0f);
 
   return (base_cpuct + scale_cpuct) *
@@ -1941,7 +1941,7 @@ void SearchWorker::PickNodesToExtendTask(
             float p = cur_iters[idx].GetP();
 
             // a small hack to reduce policy on bad moves
-            if (p < 0.01f) p /= 3;
+            // if (p < 0.01f) p /= 1.5;
 
             // only boost visited nodes
 						if (visited[idx]) {
