@@ -559,7 +559,7 @@ void SearchParams::Populate(OptionsParser* options) {
   // Many of them are overridden with training specific values in tournament.cc.
   options->Add<IntOption>(kMiniBatchSizeId, 1, 1024) = DEFAULT_MINIBATCH_SIZE;
   options->Add<FloatOption>(kCpuctId, 0.0f, 100.0f) = 2.0f;
-  options->Add<FloatOption>(kCpuct2Id, 0.0f, 100.0f) = 0.5f;
+  options->Add<FloatOption>(kCpuct2Id, 0.0f, 100.0f) = 0.2f;
 
 
   options->Add<FloatOption>(kCpuctAtRootId, 0.0f, 100.0f) = 1.745f;
@@ -675,7 +675,7 @@ void SearchParams::Populate(OptionsParser* options) {
   options->Add<FloatOption>(kCpuctUncertaintyMaxUncertaintyId, 0.0f, 1.0f) =
       0.347f;
   options->Add<BoolOption>(kJustFpuUncertaintyId) = false;
-  options->Add<BoolOption>(kUseCpuctUncertaintyId) = true;
+  options->Add<BoolOption>(kUseCpuctUncertaintyId) = false;
 
   options->Add<FloatOption>(kDesperationMultiplierId, 0.0f, 100.0f) = 1.5f;
   options->Add<FloatOption>(kDesperationLowId, 0.0f, 1.0f) = 0.25f;
@@ -692,7 +692,7 @@ void SearchParams::Populate(OptionsParser* options) {
   options->Add<IntOption>(kTopPolicyTierTwoNumBoostId, 0, 8) = 0;
   options->Add<BoolOption>(kUsePolicyBoostingId) = true;
 
-  options->Add<BoolOption>(kUseCorrectionHistoryId) = true;
+  options->Add<BoolOption>(kUseCorrectionHistoryId) = false;
   options->Add<FloatOption>(kCorrectionHistoryAlphaId, 0, 1) = 1;
   options->Add<FloatOption>(kCorrectionHistoryLambdaId, 0, 1) = 0.3;
 
