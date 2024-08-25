@@ -1950,13 +1950,26 @@ void SearchWorker::PickNodesToExtendTask(
             // a small hack to reduce policy on bad moves
             // if (p < 0.01f) p /= 1.5;
 
+
+
+
             // only boost visited nodes
 		    if (visited[idx]) {
-              if (util >= min_policy_boost_util_t1) {
-                p = std::max(p, policy_boost_t1);
-              }
-              if (util >= min_policy_boost_util_t2) {
-                p = std::max(p, policy_boost_t2);
+              if (util < -0.995f) {
+                if (node->GetWL() < 0.9) {
+                  if (util < -0.999f)
+                    p /= 10.0f;
+                  else
+                    p /= 3.0f;
+                }
+
+              } else {
+                if (util >= min_policy_boost_util_t1) {
+                  p = std::max(p, policy_boost_t1);
+                }
+                if (util >= min_policy_boost_util_t2) {
+                  p = std::max(p, policy_boost_t2);
+                }
               }
             } 
             else if (wl_at_max_p < -0.7) {
