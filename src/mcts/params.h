@@ -229,6 +229,8 @@ class SearchParams {
   float GetCorrectionHistoryAlpha() const { return kCorrectionHistoryAlpha; }
   float GetCorrectionHistoryLambda() const { return kCorrectionHistoryLambda; }
 
+  bool GetUseLpPruning() const { return kUseLpPruning; }
+
 
   // Search parameter IDs.
   static const OptionId kMiniBatchSizeId;
@@ -345,6 +347,11 @@ class SearchParams {
   static const OptionId kCorrectionHistoryAlphaId;
   static const OptionId kCorrectionHistoryLambdaId;
 
+  static const OptionId kUseLpPruningId;
+
+
+
+
 
 
  private:
@@ -444,6 +451,8 @@ class SearchParams {
   const bool kUseCorrectionHistory;
   const float kCorrectionHistoryAlpha;
   const float kCorrectionHistoryLambda;
+
+  const bool kUseLpPruning;
 
 
 };

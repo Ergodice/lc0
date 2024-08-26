@@ -552,6 +552,10 @@ const OptionId SearchParams::kCorrectionHistoryAlphaId{
 const OptionId SearchParams::kCorrectionHistoryLambdaId{
     "correction-history-lambda", "CorrectionHistoryLambda",
     "Strength of correction history adjustment. [0,1]"};
+
+const OptionId SearchParams::kUseLpPruningId{
+    "use-lp-pruning", "UseLpPruning",
+    "Whether to prune moves with low policy and low eval"};
 	
 
 void SearchParams::Populate(OptionsParser* options) {
@@ -696,11 +700,7 @@ void SearchParams::Populate(OptionsParser* options) {
   options->Add<FloatOption>(kCorrectionHistoryAlphaId, 0, 1) = 1;
   options->Add<FloatOption>(kCorrectionHistoryLambdaId, 0, 1) = 0.3;
 
-
-	
-
-
-
+  options->Add<BoolOption>(kUseLpPruningId) = true;
 
   options->Add<BoolOption>(kSearchSpinBackoffId) = false;
 
@@ -862,6 +862,8 @@ SearchParams::SearchParams(const OptionsDict& options)
       kUseCorrectionHistory(options.Get<bool>(kUseCorrectionHistoryId)),
       kCorrectionHistoryAlpha(options.Get<float>(kCorrectionHistoryAlphaId)),
       kCorrectionHistoryLambda(options.Get<float>(kCorrectionHistoryLambdaId)),
+
+      kUseLpPruning(options.Get<bool>(kUseLpPruningId)),
 
 
       kEasyEvalWeightDecay(options.Get<float>(kEasyEvalWeightDecayId)),
