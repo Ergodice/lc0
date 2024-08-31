@@ -140,6 +140,7 @@ void Node::Trim(GCQueue* gc_queue) {
   m_ = 0.0f;
   vs_ = 0.0f;
   n_ = 0;
+  weight_ = 0.0f;
   n_in_flight_ = 0;
 
   // edge_
@@ -253,6 +254,7 @@ void LowNode::MakeNotTerminal(const Node* node) {
   lower_bound_ = GameResult::BLACK_WON;
   upper_bound_ = GameResult::WHITE_WON;
   n_ = 0;
+  weight_ = 0.0;
   wl_ = 0.0;
   d_ = 0.0;
   m_ = 0.0;
@@ -262,22 +264,24 @@ void LowNode::MakeNotTerminal(const Node* node) {
   if (node->GetNumEdges() > 0) {
     for (const auto& child : node->Edges()) {
       const auto n = child.GetN();
+      const auto weight = child.GetWeight();
       if (n > 0) {
         n_ += n;
+        weight_ += weight;
         // Flip Q for opponent.
         // Default values don't matter as n is > 0.
-        wl_ += child.GetWL(0.0f) * n;
-        d_ += child.GetD(0.0f) * n;
-        m_ += child.GetM(0.0f) * n;
-        vs_ += child.GetVS(0.0f) * n;
+        wl_ += child.GetWL(0.0f) * weight_;
+        d_ += child.GetD(0.0f) * weight_;
+        m_ += child.GetM(0.0f) * weight_;
+        vs_ += child.GetVS(0.0f) * weight_;
       }
     }
 
     // Recompute with current eval (instead of network's) and children's eval.
-    wl_ /= n_;
-    d_ /= n_;
-    m_ /= n_;
-    vs_ /= n_;
+    wl_ /= weight_;
+    d_ /= weight_;
+    m_ /= weight_;
+    vs_ /= weight_;
   }
 
   assert(WLDMInvariantsHold());
@@ -330,6 +334,7 @@ void Node::MakeNotTerminal(bool also_low_node) {
     lower_bound_ = -upper_bound;
     upper_bound_ = -lower_bound;
     n_ = low_node_->GetN();
+    weight_ = low_node_->GetWeight();
     wl_ = -low_node_->GetWL();
     d_ = low_node_->GetD();
     m_ = low_node_->GetM() + 1;
@@ -338,6 +343,7 @@ void Node::MakeNotTerminal(bool also_low_node) {
     lower_bound_ = GameResult::BLACK_WON;
     upper_bound_ = GameResult::WHITE_WON;
     n_ = 0.0f;
+    weight_ = 0.0f;
     wl_ = 0.0f;
     d_ = 0.0f;
     m_ = 0.0f;
