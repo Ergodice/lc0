@@ -270,10 +270,10 @@ void LowNode::MakeNotTerminal(const Node* node) {
         weight_ += weight;
         // Flip Q for opponent.
         // Default values don't matter as n is > 0.
-        wl_ += child.GetWL(0.0f) * weight_;
-        d_ += child.GetD(0.0f) * weight_;
-        m_ += child.GetM(0.0f) * weight_;
-        vs_ += child.GetVS(0.0f) * weight_;
+        wl_ += child.GetWL(0.0f) * weight;
+        d_ += child.GetD(0.0f) * weight;
+        m_ += child.GetM(0.0f) * weight;
+        vs_ += child.GetVS(0.0f) * weight;
       }
     }
 
