@@ -533,8 +533,8 @@ inline float GetFpu(const SearchParams& params, Node* node, bool is_root_node,
 	// we shouldn't push the value below -1
   return params.GetFpuAbsolute(is_root_node)
              ? value
-             : fmax(-node->GetQ(-draw_score) -
-                        value * std::sqrt(node->GetVisitedPolicy()), -1.0f);
+             : -node->GetScore() -
+                        value * std::sqrt(node->GetVisitedPolicy());
 }
 
 // Faster version for if visited_policy is readily available already.
@@ -543,8 +543,7 @@ inline float GetFpu(const SearchParams& params, Node* node, bool is_root_node,
   const auto value = params.GetFpuValue(is_root_node);
   return params.GetFpuAbsolute(is_root_node)
              ? value
-             : fmax(-node->GetQ(-draw_score) -
-                        value * std::sqrt(visited_pol), -1.0f);
+             : -node->GetScore() - value * std::sqrt(node->GetVisitedPolicy());
 }
 
 inline float ComputeExploreFactor(const SearchParams& params, float weight, bool is_root_node) {
@@ -620,6 +619,7 @@ std::vector<std::string> Search::GetVerboseStats(Node* node) const {
     if (n) {
       print(oss, "(WGT: ", n->GetWeight(), ") ", 11, 3);
       print(oss, "(WL: ", sign * n->GetWL(), ") ", 8, 5);
+      print(oss, "(SCR: ", sign * n->GetScore(), ") ", 8, 5);
       print(oss, "(D: ", n->GetD(), ") ", 5, 3);
       print(oss, "(M: ", n->GetM(), ") ", 4, 1);
       print(oss, "(STD: ",
@@ -1875,7 +1875,8 @@ void SearchWorker::PickNodesToExtendTask(
         int index = child->Index();
         visited_pol += p;
         float q = child->GetQ(draw_score);
-        current_util[index] = q + m_evaluator.GetMUtility(child, q);
+        float score = child->GetScore();
+        current_util[index] = score + m_evaluator.GetMUtility(child, q);
 				
         visited[index] = true;
 
@@ -2414,11 +2415,12 @@ void SearchWorker::DoBackupUpdate() {
 }
 
 bool SearchWorker::MaybeAdjustForTerminalOrTransposition(
-    Node* n, const LowNode* nl, float& v, float& d, float& m, float& vs,
-    uint32_t& n_to_fix, float& weight_to_fix, float& v_delta, float& d_delta,
-    float& m_delta, float& vs_delta, bool& update_parent_bounds) const {
+    Node* n, const LowNode* nl, float& v, float& d, float& m, float& vs, float& score,
+    uint32_t& n_to_fix, float& weight_to_fix, float& v_delta, float& d_delta, float& m_delta, float& vs_delta,
+    float& score_delta, bool& update_parent_bounds) const {
   if (n->IsTerminal()) {
     v = n->GetWL();
+    score = n->GetScore();
     d = n->GetD();
     m = n->GetM();
     vs = n->GetVS();
@@ -2432,6 +2434,7 @@ bool SearchWorker::MaybeAdjustForTerminalOrTransposition(
     // Adapt information from low node to node by flipping Q sign, bounds,
     // result and incrementing m.
     v = -nl->GetWL();
+    score = -nl->GetScore();
     d = nl->GetD();
     m = nl->GetM() + 1;
     vs = nl->GetVS();
@@ -2440,6 +2443,7 @@ bool SearchWorker::MaybeAdjustForTerminalOrTransposition(
     n_to_fix = n->GetN();
     weight_to_fix = n->GetWeight();
     v_delta = v - n->GetWL();
+    score_delta = score - n->GetScore();
     d_delta = d - n->GetD();
     m_delta = m - n->GetM();
     vs_delta = vs - n->GetVS();
@@ -2488,6 +2492,7 @@ void SearchWorker::DoBackupUpdateSingleNode(
       params_.GetStickyEndgames() && n->IsTerminal() && !n->GetN();
   auto nl = n->GetLowNode();
   float v = 0.0f;
+  float score = 0.0f;
   float d = 0.0f;
   float m = 0.0f;
   float vs = v * v;
@@ -2497,6 +2502,7 @@ void SearchWorker::DoBackupUpdateSingleNode(
   float d_delta = 0.0f;
   float m_delta = 0.0f;
   float vs_delta = 0.0f;
+  float score_delta = 0.0f;
 
   bool use_correction_history = params_.GetUseCorrectionHistory();
 
@@ -2551,8 +2557,8 @@ void SearchWorker::DoBackupUpdateSingleNode(
       wl_corrected = std::clamp(wl_corrected, -1.0f, 1.0f);
     }
 
-    nl->FinalizeScoreUpdate(
-       wl_corrected, nl->GetD(), nl->GetM(), nl->GetVS(),
+    nl->FinalizeScoreUpdate(wl_corrected, nl->GetD(), nl->GetM(), nl->GetVS(),
+                            nl->GetScore(),
         node_to_process.multivisit,
         node_to_process.multivisit * avg_weight);
 
@@ -2569,13 +2575,15 @@ void SearchWorker::DoBackupUpdateSingleNode(
     // results. Unlike two-folds that can keep updating their "real" values.
     n->SetRepetition();
     v = 0.0f;
+    score = 0.0f;
     d = 1.0f;
     m = 1;
   } else if (!MaybeAdjustForTerminalOrTransposition(
-                 n, nl, v, d, m, vs, n_to_fix, weight_to_fix, v_delta, d_delta,
-                 m_delta, vs_delta, update_parent_bounds)) {
+                 n, nl, v, d, m, vs, score, n_to_fix, weight_to_fix, v_delta, d_delta,
+                 m_delta, vs_delta, score_delta, update_parent_bounds)) {
     // If there is nothing better, use original NN values adjusted for node.
     v = -nl->GetWL();
+    score = -nl->GetScore();
     d = nl->GetD();
     m = nl->GetM() + 1;
     vs = nl->GetVS();
@@ -2585,13 +2593,13 @@ void SearchWorker::DoBackupUpdateSingleNode(
   for (auto it = path.crbegin(); it != path.crend();
        /* ++it in the body */) {
     n->FinalizeScoreUpdate(
-        v, d, m, vs, node_to_process.multivisit,
+        v, d, m, vs, score, node_to_process.multivisit,
         node_to_process.multivisit * avg_weight);
     if (n_to_fix > 0 && !n->IsTerminal()) {
       // First part of the path might be never as it was removed and recreated.
       n_to_fix = std::min(n_to_fix, n->GetN());
       weight_to_fix = std::min(weight_to_fix, n->GetWeight());
-      n->AdjustForTerminal(v_delta, d_delta, m_delta, vs_delta, n_to_fix,
+      n->AdjustForTerminal(v_delta, d_delta, m_delta, vs_delta, score_delta, n_to_fix,
                            weight_to_fix);
     }
 
@@ -2625,6 +2633,7 @@ void SearchWorker::DoBackupUpdateSingleNode(
 
     if (pl->IsTerminal()) {
       v = pl->GetWL();
+      score = pl->GetScore();
       d = pl->GetD();
       m = pl->GetM();
       vs = pl->GetVS();
@@ -2632,10 +2641,10 @@ void SearchWorker::DoBackupUpdateSingleNode(
       weight_to_fix = 0.0f;
     }
     pl->FinalizeScoreUpdate(
-        v, d, m, vs, node_to_process.multivisit,
+        v, d, m, vs, score, node_to_process.multivisit,
         node_to_process.multivisit * avg_weight);
     if (n_to_fix > 0) {
-      pl->AdjustForTerminal(v_delta, d_delta, m_delta, vs_delta, n_to_fix,
+      pl->AdjustForTerminal(v_delta, d_delta, m_delta, vs_delta, score_delta, n_to_fix,
                             weight_to_fix);
     }
 
@@ -2651,11 +2660,12 @@ void SearchWorker::DoBackupUpdateSingleNode(
     // Q will be flipped for opponent.
     v = -v;
     v_delta = -v_delta;
+    score = -score;
     m++;
 
     MaybeAdjustForTerminalOrTransposition(
-        p, pl, v, d, m, vs, n_to_fix, weight_to_fix, v_delta, d_delta, m_delta,
-        vs_delta, update_parent_bounds);
+        p, pl, v, d, m, vs, score, n_to_fix, weight_to_fix, v_delta, d_delta, m_delta,
+        vs_delta, score_delta, update_parent_bounds);
 
     // Update the stats.
     // Best move.

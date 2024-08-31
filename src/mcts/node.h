@@ -45,6 +45,8 @@
 
 namespace lczero {
 
+
+
 // Terminology:
 // * Edge - a potential edge with a move and policy information.
 // * Node - an existing edge with number of visits and evaluation.
@@ -94,6 +96,8 @@ namespace lczero {
 #define __arm__
 #endif
 
+
+
 // Atomic unique_ptr based on the public domain code from
 // https://stackoverflow.com/a/42811152 .
 template <class T>
@@ -102,6 +106,8 @@ class atomic_unique_ptr {
   using unique_pointer = std::unique_ptr<T>;
 
  public:
+
+
   // Manage no pointer.
   constexpr atomic_unique_ptr() noexcept : ptr() {}
 
@@ -301,6 +307,7 @@ class Node {
   // Returns node eval, i.e. average subtree V for non-terminal node and -1/0/1
   // for terminal nodes.
   float GetWL() const { return wl_; }
+  float GetScore() const { return score_; }
   float GetD() const { return d_; }
   float GetM() const { return m_; }
   float GetVS() const { return vs_; }
@@ -345,10 +352,10 @@ class Node {
   // * Q (weighted average of all V in a subtree)
   // * N (+=multivisit)
   // * N-in-flight (-=multivisit)
-  void FinalizeScoreUpdate(float v, float d, float m, float vs,
+  void FinalizeScoreUpdate(float v, float d, float m, float vs, float score,
                            uint32_t multivisit, float multiweight);
   // Like FinalizeScoreUpdate, but it updates n existing visits by delta amount.
-  void AdjustForTerminal(float v, float d, float m, float vs,
+  void AdjustForTerminal(float v, float d, float m, float vs, float score,
                          uint32_t multivisit, float multiweight);
   // When search decides to treat one visit as several (in case of collisions
   // or visiting terminal nodes several times), it amplifies the visit by
@@ -424,6 +431,9 @@ class Node {
   // minus L". Is equal to Q if draw score is 0.
   double wl_ = 0.0;
 
+  double score_ = 0.0f;
+
+
   // Value squared, used in computing variance.
   double vs_ = 0.0;
   // Weight of node for uncertainty weighting
@@ -490,6 +500,7 @@ class LowNode {
   // For non-TT nodes.
   LowNode(const LowNode& p)
       : wl_(p.wl_),
+        score_(p.score_),
         v_(p.v_),
         hash_(p.hash_),
         ch_hash_(p.ch_hash_),
@@ -511,6 +522,7 @@ class LowNode {
   // Only used when creating twin low nodes
   LowNode(const LowNode& p, const uint64_t hash)
       : wl_(p.wl_),
+        score_(p.score_),
         v_(p.v_),
         hash_(hash),
         ch_hash_(p.ch_hash_),
@@ -555,6 +567,12 @@ class LowNode {
 
     wl_ = eval->q;
     v_ = eval->q;
+
+    float bound = 0.9;
+    if (std::abs(v_) > bound)
+      score_ = v_ * (1 + 2 * (std::abs(v_) - bound) / (1 - bound));
+    else
+      score_ = v_;
     d_ = eval->d;
     m_ = eval->m;
     e_ = std::sqrt(eval->e);
@@ -581,6 +599,7 @@ class LowNode {
   // Returns node eval, i.e. average subtree V for non-terminal node and -1/0/1
   // for terminal nodes.
   float GetWL() const { return wl_; }
+  float GetScore() const { return score_; }
   float GetV() const { return v_; }
   float GetD() const { return d_; }
   float GetM() const { return m_; }
@@ -622,11 +641,11 @@ class LowNode {
   // * Q (weighted average of all V in a subtree)
   // * N (+=multivisit)
   // * N-in-flight (-=multivisit)
-  void FinalizeScoreUpdate(float v, float d, float m, float vs,
+  void FinalizeScoreUpdate(float v, float d, float m, float vs, float score,
                            uint32_t multivisit, float multiweight);
 
   // Like FinalizeScoreUpdate, but it updates n existing visits by delta amount.
-  void AdjustForTerminal(float v, float d, float m, float vs,
+  void AdjustForTerminal(float v, float d, float m, float vs, float score,
                          uint32_t multivisit, float multiweight);
 
   // Deletes all children.
@@ -686,6 +705,9 @@ class LowNode {
   // perspective of the player-to-move for the position.
   // WL stands for "W minus L". Is equal to Q if draw score is 0.
   double wl_ = 0.0f;
+
+  double score_ = 0.0f;
+
 
   // Value squared sum. Used to compute variance.
   double vs_ = 0.0f;
@@ -774,6 +796,9 @@ class EdgeAndNode {
   }
   float GetWL(float default_wl) const {
     return (node_ && node_->GetN() > 0) ? node_->GetWL() : default_wl;
+  }
+  float GetScore(float default_score) const {
+    return (node_ && node_->GetN() > 0) ? node_->GetScore() : default_score;
   }
   float GetD(float default_d) const {
     return (node_ && node_->GetN() > 0) ? node_->GetD() : default_d;

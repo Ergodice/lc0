@@ -45,6 +45,19 @@
 
 namespace lczero {
 
+static inline float Score(float x)
+
+{
+  float bound = 0.9;
+  if (std::abs(x) > bound)
+    return x * (1 + 2 * (std::abs(x) - bound) / (1 - bound));
+  else
+    return x;
+}
+  
+
+
+
 /////////////////////////////////////////////////////////////////////////
 // Edge
 /////////////////////////////////////////////////////////////////////////
@@ -131,6 +144,7 @@ static void TTGCEnqueue(GCQueue* gc_queue, const LowNode* low_node) {
 
 void Node::Trim(GCQueue* gc_queue) {
   wl_ = 0.0f;
+  score_ = Score(wl_);
 
   TTGCEnqueue(gc_queue, low_node_);
   UnsetLowNode();
@@ -242,6 +256,7 @@ void LowNode::MakeTerminal(GameResult result, float plies_left, Terminal type) {
     d_ = 0.0f;
   }
   vs_ = wl_ * wl_;
+  score_ = Score(wl_);
 
   assert(WLDMInvariantsHold());
 }
@@ -256,6 +271,7 @@ void LowNode::MakeNotTerminal(const Node* node) {
   n_ = 0;
   weight_ = 0.0;
   wl_ = 0.0;
+  score_ = Score(wl_);
   d_ = 0.0;
   m_ = 0.0;
   vs_ = 0.0;
@@ -274,6 +290,7 @@ void LowNode::MakeNotTerminal(const Node* node) {
         d_ += child.GetD(0.0f) * weight;
         m_ += child.GetM(0.0f) * weight;
         vs_ += child.GetVS(0.0f) * weight;
+        score_ += child.GetScore(0.0f) * weight;
       }
     }
 
@@ -282,6 +299,7 @@ void LowNode::MakeNotTerminal(const Node* node) {
     d_ /= weight_;
     m_ /= weight_;
     vs_ /= weight_;
+    score_ /= weight_;
   }
 
   assert(WLDMInvariantsHold());
@@ -314,6 +332,7 @@ void Node::MakeTerminal(GameResult result, float plies_left, Terminal type) {
     SetP(0.0f);
   }
   vs_ = wl_ * wl_;
+  score_ = Score(wl_);
 
   assert(WLDMInvariantsHold());
 }
@@ -336,6 +355,7 @@ void Node::MakeNotTerminal(bool also_low_node) {
     n_ = low_node_->GetN();
     weight_ = low_node_->GetWeight();
     wl_ = -low_node_->GetWL();
+    score_ = -low_node_->GetScore();
     d_ = low_node_->GetD();
     m_ = low_node_->GetM() + 1;
     vs_ = low_node_->GetVS();
@@ -345,6 +365,7 @@ void Node::MakeNotTerminal(bool also_low_node) {
     n_ = 0.0f;
     weight_ = 0.0f;
     wl_ = 0.0f;
+    score_ = Score(wl_);
     d_ = 0.0f;
     m_ = 0.0f;
     vs_ = 0.0f;
@@ -377,7 +398,7 @@ void Node::CancelScoreUpdate(uint32_t multivisit) {
   n_in_flight_.fetch_sub(multivisit, std::memory_order_acq_rel);
 }
 
-void LowNode::FinalizeScoreUpdate(float v, float d, float m, float vs,
+void LowNode::FinalizeScoreUpdate(float v, float d, float m, float vs, float score,
                                   uint32_t multivisit, float multiweight) {
   assert(edges_);
 
@@ -394,6 +415,7 @@ void LowNode::FinalizeScoreUpdate(float v, float d, float m, float vs,
 
   // Recompute Q.
   wl_ += multiweight * (v - wl_) / (weight_ + multiweight);
+  score_ += multiweight * (score - score_) / (weight_ + multiweight);
   d_ += multiweight * (d - d_) / (weight_ + multiweight);
   m_ += multiweight * (m - m_) / (weight_ + multiweight);
   vs_ += multiweight * (vs - vs_) / (weight_ + multiweight);
@@ -408,7 +430,7 @@ void LowNode::FinalizeScoreUpdate(float v, float d, float m, float vs,
 }
 
 
-void LowNode::AdjustForTerminal(float v, float d, float m, float vs,
+void LowNode::AdjustForTerminal(float v, float d, float m, float vs, float score,
                                 uint32_t multivisit, float multiweight) {
   assert(static_cast<uint32_t>(multivisit) <= n_);
 
@@ -416,6 +438,7 @@ void LowNode::AdjustForTerminal(float v, float d, float m, float vs,
 
   // Recompute Q.
   wl_ += multiweight * v / weight_;
+  score_ += multiweight * score / weight_;
   d_ += multiweight * d / weight_;
   m_ += multiweight * m / weight_;
   vs_ += multiweight * vs / weight_;
@@ -430,7 +453,7 @@ void LowNode::AdjustForTerminal(float v, float d, float m, float vs,
 
 
 
-void Node::FinalizeScoreUpdate(float v, float d, float m, float vs,
+void Node::FinalizeScoreUpdate(float v, float d, float m, float vs, float score,
                                uint32_t multivisit, float multiweight) {
 
 
@@ -438,6 +461,7 @@ void Node::FinalizeScoreUpdate(float v, float d, float m, float vs,
 
   // Recompute Q.
   wl_ += multiweight * (v - wl_) / (weight_ + multiweight);
+  score_ += multiweight * (score - score_) / (weight_ + multiweight);
   d_ += multiweight * (d - d_) / (weight_ + multiweight);
   m_ += multiweight * (m - m_) / (weight_ + multiweight);
   vs_ += multiweight * (vs - vs_) / (weight_ + multiweight);
@@ -453,12 +477,13 @@ void Node::FinalizeScoreUpdate(float v, float d, float m, float vs,
   n_in_flight_.fetch_sub(multivisit, std::memory_order_acq_rel);
 }
 
-void Node::AdjustForTerminal(float v, float d, float m, float vs,
+void Node::AdjustForTerminal(float v, float d, float m, float vs, float score,
                              uint32_t multivisit, float multiweight) {
   assert(static_cast<uint32_t>(multivisit) <= n_);
 
   // Recompute Q.
   wl_ += multiweight * v / weight_;
+  score_ += multiweight * score / weight_;
   d_ += multiweight * d / weight_;
   m_ += multiweight * m / weight_;
   vs_ += multiweight * vs / weight_;
