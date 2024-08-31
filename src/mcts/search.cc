@@ -703,9 +703,11 @@ std::vector<std::string> Search::GetVerboseStats(Node* node) const {
   print_stats(&oss, node);
   print_tail(&oss, node);
 
-  oss << std::endl << "Low nodes: " << total_low_nodes_
-       << " NN queries: " << total_nn_queries_
-       << " Playouts: " << total_playouts_ + initial_visits_ << std::endl;
+  oss << std::endl
+      << "Low nodes: " << total_low_nodes_
+      << " NN queries: " << total_nn_queries_
+      << " Playouts: " << total_playouts_ + initial_visits_
+      << " Wasted queries: " << total_wasted_queries_ << std::endl;
 
 	print(&oss, "(U coeff: ", U_coeff, ") ", 15, 2);
 
@@ -1958,6 +1960,7 @@ void SearchWorker::PickNodesToExtendTask(
               if (util < -0.9f) {
 
                 if (params_.GetUseLpPruning() && p < 0.01f) {
+                  
                   if (util < -0.99f)
                     p /= 10.0;
                   else
@@ -1985,10 +1988,13 @@ void SearchWorker::PickNodesToExtendTask(
                 }
               }
             } 
-            else if (wl_at_max_p < -0.7) {
-                p *= 2.0f;
-            }
+            else if (p < 0.01 && params_.GetUseCpuctUncertainty()) {
+                 p /= 3;
             
+              
+            }
+
+
             current_score[idx] =
               p * puct_mult / (1 + weightstarted) + util;
             cache_filled_idx++;
@@ -2681,6 +2687,9 @@ void SearchWorker::DoBackupUpdateSingleNode(
   }
   if (node_to_process.ShouldAddToInput()) {
     search_->total_nn_queries_++;
+    if (std::abs(nl->GetWL()) > .96) {
+      search_->total_wasted_queries_++;
+    }
   }
 }
 
