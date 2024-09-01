@@ -1957,28 +1957,9 @@ void SearchWorker::PickNodesToExtendTask(
 
 
             // only boost visited nodes
-		    if (visited[idx]) {
+		        if (visited[idx]) {
               if (util < -0.9f) {
 
-                if (params_.GetUseLpPruning() && p < 0.01f) {
-                  
-                  if (util < -0.99f)
-                    p /= 10.0;
-                  else
-                    p /= 3.0f;
-                }
-
-                //// TODO: this idea is quite hacky and should be replaced with a more robust implementation
-                //if (node->GetWL() < 0.85) {
-                //  if (util < -0.998f)
-                //    p /= 10.0f;
-                //  else if (util < -0.99f)
-                //    p /= 3.0f;
-                //  else if (util < -0.95f && node->GetWL() < 0.8)
-                //    p /= 2.0f;
-                //  else if (util < -0.9f && node->GetWL() < 0.7)
-                //    p /= 1.5f;
-                //}
 
               } else {
                 if (util >= min_policy_boost_util_t1) {
