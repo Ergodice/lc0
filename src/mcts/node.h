@@ -187,6 +187,8 @@ class Edge {
   float GetP() const;
   void SetP(float val);
 
+	bool GetCheck() const;
+
   // Debug information about the edge.
   std::string DebugString() const;
 
@@ -830,6 +832,9 @@ class EdgeAndNode {
   float GetP() const {
     return node_ != nullptr ? node_->GetP() : edge_->GetP();
   }
+  bool GetCheck() const { return edge_->GetCheck();
+  }
+
   Move GetMove(bool flip = false) const {
     return edge_ ? edge_->GetMove(flip) : Move();
   }
