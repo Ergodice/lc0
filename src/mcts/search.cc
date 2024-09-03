@@ -49,6 +49,17 @@ namespace {
 // Maximum delay between outputting "uci info" when nothing interesting happens.
 const int kUciInfoMinimumFrequencyMs = 5000;
 
+static inline float ScoreWL(float x)
+
+{
+  float bound = 0.9;
+  if (std::abs(x) > bound)
+    return x * (1 + 2 * (std::abs(x) - bound) / (1 - bound));
+  else
+    return x;
+}
+  
+
 MoveList MakeRootMoveFilter(const MoveList& searchmoves,
                             SyzygyTablebase* syzygy_tb,
                             const PositionHistory& history, bool fast_play,
@@ -527,15 +538,6 @@ inline float ComputeCpuctFactor(const SearchParams& params, float weight,
 }
 
 
-inline float GetFpu(const SearchParams& params, Node* node, bool is_root_node,
-                    float draw_score) {
-  const auto value = params.GetFpuValue(is_root_node);
-	// we shouldn't push the value below -1
-  return params.GetFpuAbsolute(is_root_node)
-             ? value
-             : -node->GetScore() -
-                        value * std::sqrt(node->GetVisitedPolicy());
-}
 
 // Faster version for if visited_policy is readily available already.
 inline float GetFpu(const SearchParams& params, Node* node, bool is_root_node,
@@ -543,7 +545,14 @@ inline float GetFpu(const SearchParams& params, Node* node, bool is_root_node,
   const auto value = params.GetFpuValue(is_root_node);
   return params.GetFpuAbsolute(is_root_node)
              ? value
-             : -node->GetScore() - value * std::sqrt(node->GetVisitedPolicy());
+             : ScoreWL(-node->GetQ(draw_score)) - value * std::sqrt(visited_pol);
+}
+
+
+inline float GetFpu(const SearchParams& params, Node* node, bool is_root_node,
+                    float draw_score) {
+  return GetFpu(params, node, is_root_node, draw_score,
+                node->GetVisitedPolicy());
 }
 
 inline float ComputeExploreFactor(const SearchParams& params, float weight, bool is_root_node) {
@@ -1875,8 +1884,7 @@ void SearchWorker::PickNodesToExtendTask(
         int index = child->Index();
         visited_pol += p;
         float q = child->GetQ(draw_score);
-        float score = child->GetScore();
-        current_util[index] = score + m_evaluator.GetMUtility(child, q);
+        current_util[index] = ScoreWL(q) + m_evaluator.GetMUtility(child, q);
 				
         visited[index] = true;
 

@@ -569,10 +569,7 @@ class LowNode {
     v_ = eval->q;
 
     float bound = 0.9;
-    if (std::abs(v_) > bound)
-      score_ = v_ * (1 + 2 * (std::abs(v_) - bound) / (1 - bound));
-    else
-      score_ = v_;
+    score_ = v_;
     d_ = eval->d;
     m_ = eval->m;
     e_ = std::sqrt(eval->e);

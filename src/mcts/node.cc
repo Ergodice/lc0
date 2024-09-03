@@ -45,16 +45,7 @@
 
 namespace lczero {
 
-static inline float Score(float x)
 
-{
-  float bound = 0.9;
-  if (std::abs(x) > bound)
-    return x * (1 + 2 * (std::abs(x) - bound) / (1 - bound));
-  else
-    return x;
-}
-  
 
 
 
@@ -144,7 +135,7 @@ static void TTGCEnqueue(GCQueue* gc_queue, const LowNode* low_node) {
 
 void Node::Trim(GCQueue* gc_queue) {
   wl_ = 0.0f;
-  score_ = Score(wl_);
+  score_ = wl_;
 
   TTGCEnqueue(gc_queue, low_node_);
   UnsetLowNode();
@@ -256,7 +247,7 @@ void LowNode::MakeTerminal(GameResult result, float plies_left, Terminal type) {
     d_ = 0.0f;
   }
   vs_ = wl_ * wl_;
-  score_ = Score(wl_);
+  score_ = wl_;
 
   assert(WLDMInvariantsHold());
 }
@@ -271,7 +262,7 @@ void LowNode::MakeNotTerminal(const Node* node) {
   n_ = 0;
   weight_ = 0.0;
   wl_ = 0.0;
-  score_ = Score(wl_);
+  score_ = wl_;
   d_ = 0.0;
   m_ = 0.0;
   vs_ = 0.0;
@@ -332,7 +323,7 @@ void Node::MakeTerminal(GameResult result, float plies_left, Terminal type) {
     SetP(0.0f);
   }
   vs_ = wl_ * wl_;
-  score_ = Score(wl_);
+  score_ = wl_;
 
   assert(WLDMInvariantsHold());
 }
@@ -365,7 +356,7 @@ void Node::MakeNotTerminal(bool also_low_node) {
     n_ = 0.0f;
     weight_ = 0.0f;
     wl_ = 0.0f;
-    score_ = Score(wl_);
+    score_ = wl_;
     d_ = 0.0f;
     m_ = 0.0f;
     vs_ = 0.0f;
