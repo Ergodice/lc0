@@ -547,7 +547,7 @@ inline float GetFpu(const SearchParams& params, Node* node, bool is_root_node,
   const auto value = params.GetFpuValue(is_root_node);
   return params.GetFpuAbsolute(is_root_node)
              ? value
-             : ScoreWL(-node->GetQ(draw_score)) - value * std::sqrt(visited_pol);
+             : ScoreWL(-node->GetQ(draw_score)) - std::min(value * std::sqrt(visited_pol), node->GetQ(draw_score) + 1);
 }
 
 
@@ -1974,8 +1974,9 @@ void SearchWorker::PickNodesToExtendTask(
 
             // only boost visited nodes
 		        if (visited[idx]) {
-              if (util < -0.9f) {
 
+              if (util < -0.995f && params_.GetUseLpPruning()) {
+                    p /= 2.0;
 
               } else {
                 if (util >= min_policy_boost_util_t1) {
@@ -1986,9 +1987,14 @@ void SearchWorker::PickNodesToExtendTask(
                 }
               }
             } 
-            else if (p < 0.01 && params_.GetUseCpuctUncertainty()) {
-                 p /= 3;
-            
+            else {
+              if (check) {
+                p = std::pow(max_p * p * p, 0.3333)
+              }
+              
+              else if (p < 0.01 && params_.GetUseLpPruning()) {
+                p /= 1.5;
+              }
               
             }
 
