@@ -1993,7 +1993,7 @@ void SearchWorker::PickNodesToExtendTask(
               }
               
               else if (p < 0.01 && params_.GetUseLpPruning()) {
-                p /= 1.5;
+                p /= 3.0;
               }
               
             }
