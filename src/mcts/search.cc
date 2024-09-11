@@ -1989,7 +1989,7 @@ void SearchWorker::PickNodesToExtendTask(
             } 
             else {
               if (check) {
-                p = std::pow(max_p * p * p, 0.3333)
+                // p = std::pow(max_p * p * p, 0.3333);
               }
               
               else if (p < 0.01 && params_.GetUseLpPruning()) {
