@@ -49,6 +49,14 @@ namespace {
 // Maximum delay between outputting "uci info" when nothing interesting happens.
 const int kUciInfoMinimumFrequencyMs = 5000;
 
+static inline float ScoreWL(float x) {
+  float bound = 0.9;
+  if (std::abs(x) > bound)
+    return x * (1 + 2 * (std::abs(x) - bound) / (1 - bound));
+  else
+    return x;
+}
+
 MoveList MakeRootMoveFilter(const MoveList& searchmoves,
                             SyzygyTablebase* syzygy_tb,
                             const PositionHistory& history, bool fast_play,
@@ -527,24 +535,21 @@ inline float ComputeCpuctFactor(const SearchParams& params, float weight,
 }
 
 
-inline float GetFpu(const SearchParams& params, Node* node, bool is_root_node,
-                    float draw_score) {
-  const auto value = params.GetFpuValue(is_root_node);
-	// we shouldn't push the value below -1
-  return params.GetFpuAbsolute(is_root_node)
-             ? value
-             : fmax(-node->GetQ(-draw_score) -
-                        value * std::sqrt(node->GetVisitedPolicy()), -1.0f);
-}
-
 // Faster version for if visited_policy is readily available already.
 inline float GetFpu(const SearchParams& params, Node* node, bool is_root_node,
                     float draw_score, float visited_pol) {
   const auto value = params.GetFpuValue(is_root_node);
   return params.GetFpuAbsolute(is_root_node)
              ? value
-             : fmax(-node->GetQ(-draw_score) -
-                        value * std::sqrt(visited_pol), -1.0f);
+             : ScoreWL(-node->GetQ(draw_score)) -
+                   std::min(value * std::sqrt(visited_pol),
+                            node->GetQ(draw_score) + 1);
+}
+
+inline float GetFpu(const SearchParams& params, Node* node, bool is_root_node,
+                    float draw_score) {
+  return GetFpu(params, node, is_root_node, draw_score,
+                node->GetVisitedPolicy());
 }
 
 inline float ComputeExploreFactor(const SearchParams& params, float weight, bool is_root_node) {
@@ -1861,7 +1866,8 @@ void SearchWorker::PickNodesToExtendTask(
         int index = child->Index();
         visited_pol += child->GetP();
         float q = child->GetQ(draw_score);
-        current_util[index] = q + m_evaluator.GetMUtility(child, q);
+        current_util[index] =
+            ScoreWL(q) + m_evaluator.GetMUtility(child, ScoreWL(q));
 				
         visited[index] = true;
 
