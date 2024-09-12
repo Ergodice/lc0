@@ -1941,8 +1941,9 @@ void SearchWorker::PickNodesToExtendTask(
           if (idx > cache_filled_idx) {
             float p = cur_iters[idx].GetP();
 
+            bool is_check = cur_iters[idx].GetCheck();
             // a small hack to reduce policy on bad moves
-            if (p < 0.01f) p /= 3;
+            if (p < 0.01f && !is_check) p /= 3;
 
             // only boost visited nodes
 						if (visited[idx]) {
@@ -1952,6 +1953,9 @@ void SearchWorker::PickNodesToExtendTask(
               if (util >= min_policy_boost_util_t2) {
                 p = std::max(p, policy_boost_t2);
               }
+            }
+            else if (is_check) {
+              p = std::max(p * 1.5f, 0.04f);
             }
 
             current_score[idx] =
