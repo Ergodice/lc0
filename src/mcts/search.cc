@@ -606,7 +606,7 @@ std::vector<std::string> Search::GetVerboseStats(Node* node) const {
   auto print = [](auto* oss, auto pre, auto v, auto post, auto w, int p = 0) {
     *oss << pre << std::setw(w) << std::setprecision(p) << v << post;
   };
-  auto print_head = [&](auto* oss, auto label, int i, auto n, auto f, auto p) {
+  auto print_head = [&](auto* oss, auto label, int i, auto n, auto f, auto p, auto c) {
     *oss << std::fixed;
     print(oss, "", label, " ", 5);
     print(oss, "(", i, ") ", 4);
@@ -614,6 +614,8 @@ std::vector<std::string> Search::GetVerboseStats(Node* node) const {
     print(oss, "N: ", n, " ", 7);
     print(oss, "(+", f, ") ", 2);
     print(oss, "(P: ", p * 100, "%) ", 5, p >= 0.99995f ? 1 : 2);
+    print(oss, "C: ", c, " ", 4);
+
   };
   auto print_stats = [&](auto* oss, const auto* n) {
     const auto sign = n == node ? -1 : 1;
@@ -688,7 +690,7 @@ std::vector<std::string> Search::GetVerboseStats(Node* node) const {
     // TODO: should this be displaying transformed index?
     print_head(&oss, edge.GetMove(is_black_to_move).as_string(),
                edge.GetMove().as_nn_index(0), edge.GetN(), edge.GetNInFlight(),
-               edge.GetP());
+               edge.GetP(), edge.GetCheck());
     print_stats(&oss, edge.node());
     print(&oss, "(U: ", edge.GetU(U_coeff), ") ", 6, 5);
     print(&oss, "(S: ", Q + edge.GetU(U_coeff) + M, ") ", 8, 5);
@@ -699,13 +701,14 @@ std::vector<std::string> Search::GetVerboseStats(Node* node) const {
   // Include stats about the node in similar format to its children above.
   std::ostringstream oss;
   print_head(&oss, "node ", node->GetNumEdges(), node->GetN(),
-             node->GetNInFlight(), node->GetVisitedPolicy());
+             node->GetNInFlight(), node->GetVisitedPolicy(), false);
   print_stats(&oss, node);
   print_tail(&oss, node);
 
   oss << std::endl << "Low nodes: " << total_low_nodes_
        << " NN queries: " << total_nn_queries_
-       << " Playouts: " << total_playouts_ + initial_visits_ << std::endl;
+      << " Playouts: " << total_playouts_ + initial_visits_
+      << " Wasted queries: " << total_wasted_queries_ << std::endl;
 
 	print(&oss, "(U coeff: ", U_coeff, ") ", 15, 2);
 
@@ -1750,11 +1753,11 @@ void SearchWorker::PickNodesToExtendTask(
     receiver->reserve(receiver->size() + 30);
   }
 
-  // This 1 is 'filled pre-emptively'.
+  // These two are 'filled pre-emptively'.
   std::array<float, 256> current_util;
   std::array<bool, 256> visited;
 
-  // These 3 are 'filled on demand'.
+  // These three are 'filled on demand'.
   std::array<float, 256> current_score;
   std::array<float, 256> current_weightstarted;
 
@@ -1889,7 +1892,6 @@ void SearchWorker::PickNodesToExtendTask(
       
 			const int num_boost_t1 = params_.GetTopPolicyNumBoost();
       const int num_boost_t2 = params_.GetTopPolicyTierTwoNumBoost();
-
       const float min_policy_boost_util_t1 =
           (num_boost_t1 == 0 || !params_.GetUsePolicyBoosting())
               ? 999
@@ -1899,8 +1901,6 @@ void SearchWorker::PickNodesToExtendTask(
 					(num_boost_t2 == 0 || !params_.GetUsePolicyBoosting())
 							? 999
 							: top_utils[num_boost_t2 - 1];
-
-
       const float policy_boost_t1 = params_.GetTopPolicyBoost();
       const float policy_boost_t2 = params_.GetTopPolicyTierTwoBoost();
 
@@ -1954,7 +1954,6 @@ void SearchWorker::PickNodesToExtendTask(
               }
             }
 
-            
             current_score[idx] =
               p * puct_mult / (1 + weightstarted) + util;
             cache_filled_idx++;
@@ -1992,10 +1991,12 @@ void SearchWorker::PickNodesToExtendTask(
           }
           if (can_exit) break;
           if (weightstarted == 0) {
+						// NOTE: This logic no longer applies with fpu boosting of checks
+            // 
             // One more loop will get 2 unvisited nodes, which is sufficient to
             // ensure second best is correct. This relies upon the fact that
             // edges are sorted in policy decreasing order.
-            can_exit = true;
+            can_exit = false;
           }
         }
         int new_visits = 0;
@@ -2275,6 +2276,7 @@ void SearchWorker::CollectCollisions() {
 // 4. Run NN computation.
 // ~~~~~~~~~~~~~~~~~~~~~~
 void SearchWorker::RunNNComputation() {
+  
   computation_->ComputeBlocking(params_.GetPolicySoftmaxTemp());
 }
 
@@ -2637,6 +2639,7 @@ void SearchWorker::DoBackupUpdateSingleNode(
     nr = pr;
     nm = pm;
   }
+	
   search_->total_playouts_ += node_to_process.multivisit;
   search_->cum_depth_ +=
       node_to_process.path.size() * node_to_process.multivisit;
@@ -2647,7 +2650,12 @@ void SearchWorker::DoBackupUpdateSingleNode(
   }
   if (node_to_process.ShouldAddToInput()) {
     search_->total_nn_queries_++;
+    if (std::abs(  nl->GetWL() ) > .98) {
+      search_->total_wasted_queries_++;
+    }
   }
+
+	
 }
 
 bool SearchWorker::MaybeSetBounds(Node* p, float m, uint32_t* n_to_fix,
