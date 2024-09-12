@@ -1955,7 +1955,7 @@ void SearchWorker::PickNodesToExtendTask(
               }
             }
             else if (is_check) {
-              p = std::max(p * 1.5f, 0.04f);
+              p = std::max(p, 0.02f);
             }
 
             current_score[idx] =
