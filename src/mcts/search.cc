@@ -49,7 +49,13 @@ namespace {
 // Maximum delay between outputting "uci info" when nothing interesting happens.
 const int kUciInfoMinimumFrequencyMs = 5000;
 
-static inline float ScoreWL(float x) { return x; }
+static inline float ScoreWL(float x) {
+  float bound = 0.9;
+  if (std::abs(x) > bound)
+    return x * (1 + 2 * (std::abs(x) - bound) / (1 - bound));
+  else
+    return x;
+}
 
 MoveList MakeRootMoveFilter(const MoveList& searchmoves,
                             SyzygyTablebase* syzygy_tb,
