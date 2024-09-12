@@ -49,13 +49,7 @@ namespace {
 // Maximum delay between outputting "uci info" when nothing interesting happens.
 const int kUciInfoMinimumFrequencyMs = 5000;
 
-static inline float ScoreWL(float x) {
-  float bound = 0.9;
-  if (std::abs(x) > bound)
-    return x * (1 + 2 * (std::abs(x) - bound) / (1 - bound));
-  else
-    return x;
-}
+static inline float ScoreWL(float x) { return x; }
 
 MoveList MakeRootMoveFilter(const MoveList& searchmoves,
                             SyzygyTablebase* syzygy_tb,
@@ -543,7 +537,7 @@ inline float GetFpu(const SearchParams& params, Node* node, bool is_root_node,
              ? value
              : ScoreWL(-node->GetQ(draw_score)) -
                    std::min(value * std::sqrt(visited_pol),
-                            node->GetQ(draw_score) + 1);
+                            -node->GetQ(draw_score) + 1);
 }
 
 inline float GetFpu(const SearchParams& params, Node* node, bool is_root_node,
@@ -1867,7 +1861,7 @@ void SearchWorker::PickNodesToExtendTask(
         visited_pol += child->GetP();
         float q = child->GetQ(draw_score);
         current_util[index] =
-            ScoreWL(q) + m_evaluator.GetMUtility(child, ScoreWL(q));
+            ScoreWL(q) + m_evaluator.GetMUtility(child, q);
 				
         visited[index] = true;
 
