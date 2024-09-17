@@ -54,6 +54,7 @@ const int kUciInfoMinimumFrequencyMs = 5000;
 static inline float ScoreWL(float x)
 
 {
+  return x;
   float bound = 0.9;
   if (std::abs(x) > bound)
     return x * (1 + 2 * (std::abs(x) - bound) / (1 - bound));
@@ -719,7 +720,7 @@ std::vector<std::string> Search::GetVerboseStats(Node* node) const {
   oss << std::endl << "Low nodes: " << total_low_nodes_
        << " NN queries: " << total_nn_queries_
       << " Playouts: " << total_playouts_ + initial_visits_
-      << " Wasted queries: " << total_wasted_queries_ << std::endl;
+      << " Wasted queries: " << total_wasted_queries_ <<  " Found buckets: " << found_ch_buckets_ <<  std::endl;
 
 	print(&oss, "(U coeff: ", U_coeff, ") ", 15, 2);
 
@@ -2570,6 +2571,7 @@ void SearchWorker::DoBackupUpdateSingleNode(
 
         // for testing cht is per node
     if (ntp_cht_entry != nullptr && !nl->IsTwin()) {
+      if (ntp_cht_entry->numMembers >= 1) search_->found_ch_buckets_++;
       nl->SetCHTEntry(ntp_cht_entry);
       ntp_cht_entry->numMembers++;
     }
