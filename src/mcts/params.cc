@@ -698,7 +698,7 @@ void SearchParams::Populate(OptionsParser* options) {
 
   options->Add<BoolOption>(kUseCorrectionHistoryId) = false;
   options->Add<FloatOption>(kCorrectionHistoryAlphaId, 0, 1) = 1;
-  options->Add<FloatOption>(kCorrectionHistoryLambdaId, 0, 1) = 0.3;
+  options->Add<FloatOption>(kCorrectionHistoryLambdaId, 0, 1) = 0.15;
 
   options->Add<BoolOption>(kUseLpPruningId) = true;
 
